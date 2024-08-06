@@ -1,28 +1,31 @@
 #ifndef VERTEX_GEOMETRY_HPP
 #define VERTEX_GEOMETRY_HPP
 
-#include "glm/vec2.hpp"
+#include "glm/glm.hpp"
+#include <vector>
 
-void store_square_vertices(float *out_square, float center_x, float center_y, float side_length, int iteration);
+// unsigned int num_indices_required_to_specify_retangle = 6;
 
-void store_square_indices(unsigned int *out_indices, unsigned int iteration);
+std::vector<glm::vec3> generate_square_vertices(float center_x, float center_y, float side_length);
 
-void
-store_rectangle_vertices(float *out_square, float center_x, float center_y, float width, float height, int iteration);
+std::vector<unsigned int> generate_square_indices();
 
-void store_rectangle_indices(unsigned int *out_indices, unsigned int iteration);
+std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_y, float width, float height);
 
-void store_arrow_vertices(glm::vec2 start, glm::vec2 end, float stem_thickness, float tip_length,
-                          float *out_flattened_vertices);
+std::vector<unsigned int> generate_rectangle_indices();
 
-void store_arrow_indices(unsigned int *out_indices);
+std::vector<glm::vec3> generate_arrow_vertices(glm::vec2 start, glm::vec2 end, float stem_thickness, float tip_length);
 
-void scale_vertices(float *vertices_to_be_scaled, int num_vertices, float scale_factor);
+std::vector<unsigned int> generate_arrow_indices();
 
-void store_n_gon_flattened_vertices(float *out_vertices, int n);
+void scale_vertices_in_place(std::vector<glm::vec3> &vertices, float scale_factor);
+
+std::vector<glm::vec3> generate_n_gon_flattened_vertices(int n);
 
 int get_num_flattened_vertices_in_n_gon(int n);
 
-void translate_vertices(float *flattened_vertices_to_be_scaled, int num_vertices, float x_translate, float y_translate);
+void translate_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &translation);
 
-#endif //VERTEX_GEOMETRY_HPP
+void increment_indices_in_place(std::vector<unsigned int> &indices, unsigned int increase);
+
+#endif // VERTEX_GEOMETRY_HPP
