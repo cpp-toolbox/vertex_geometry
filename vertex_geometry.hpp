@@ -4,7 +4,27 @@
 #include "glm/glm.hpp"
 #include <vector>
 
-// unsigned int num_indices_required_to_specify_retangle = 6;
+struct IndexedVertices {
+    std::vector<glm::vec3> vertices;   // Vertices of the grid
+    std::vector<unsigned int> indices; // Flattened indices of the grid
+};
+
+struct Rectangle {
+    glm::vec3 center; // Center position
+    float width;      // Width of the rectangle
+    float height;     // Height of the rectangle
+};
+
+std::vector<Rectangle> generate_grid_rectangles(const glm::vec3 &center_position, float base_width, float base_height,
+                                                int num_rectangles_x, int num_rectangles_y, float spacing);
+
+IndexedVertices generate_grid(const glm::vec3 &center_position, float base_width, float base_height,
+                              int num_rectangles_x, int num_rectangles_y, float spacing);
+
+IndexedVertices generate_grid(const glm::vec3 &center_position, float width, float height, int num_rectangles_x,
+                              int num_rectangles_y, float spacing);
+
+std::vector<unsigned int> flatten_and_increment_indices(const std::vector<std::vector<unsigned int>> &indices);
 
 std::vector<glm::vec3> generate_square_vertices(float center_x, float center_y, float side_length);
 

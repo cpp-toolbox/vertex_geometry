@@ -3,6 +3,121 @@
 #include <math.h>
 #include "glm/geometric.hpp"
 #include <algorithm>
+#include <iostream>
+#include <set>
+
+#include <vector>
+#include <glm/vec3.hpp>
+
+std::vector<Rectangle> generate_grid_rectangles(const glm::vec3 &center_position, float width, float height,
+                                                int num_rectangles_x, int num_rectangles_y, float spacing) {
+    std::vector<Rectangle> rectangles;
+
+    float total_spacing_x = (num_rectangles_x - 1) * spacing;
+    float total_spacing_y = (num_rectangles_y - 1) * spacing;
+
+    float rectangle_width = (width - total_spacing_x) / num_rectangles_x;
+    float rectangle_height = (height - total_spacing_y) / num_rectangles_y;
+
+    float total_grid_width = width;
+    float total_grid_height = height;
+
+    float start_x = center_position.x - total_grid_width / 2;
+    float start_y = center_position.y + total_grid_height / 2;
+
+    for (int row = 0; row < num_rectangles_y; ++row) {
+        for (int col = 0; col < num_rectangles_x; ++col) {
+            float center_x = start_x + col * (rectangle_width + spacing) + rectangle_width / 2;
+            float center_y = start_y - (row * (rectangle_height + spacing) + rectangle_height / 2);
+
+            rectangles.emplace_back(
+                Rectangle{glm::vec3(center_x, center_y, center_position.z), rectangle_width, rectangle_height});
+        }
+    }
+
+    return rectangles;
+}
+
+IndexedVertices generate_grid(const glm::vec3 &center_position, float base_width, float base_height,
+                              int num_rectangles_x, int num_rectangles_y, float spacing) {
+    std::vector<Rectangle> rectangles =
+        generate_grid_rectangles(center_position, base_width, base_height, num_rectangles_x, num_rectangles_y, spacing);
+
+    std::vector<glm::vec3> vertices;
+    std::vector<std::vector<unsigned int>> all_square_indices;
+
+    for (const auto &rect : rectangles) {
+        std::vector<glm::vec3> rectangle_vertices =
+            generate_rectangle_vertices(rect.center.x, rect.center.y, rect.width, rect.height);
+        vertices.insert(vertices.end(), rectangle_vertices.begin(), rectangle_vertices.end());
+
+        std::vector<unsigned int> rectangle_indices = generate_rectangle_indices();
+        all_square_indices.push_back(rectangle_indices);
+    }
+
+    std::vector<unsigned int> flattened_indices = flatten_and_increment_indices(all_square_indices);
+
+    return {vertices, flattened_indices};
+}
+
+/**
+ * @brief Flattens and increments a collection of index sets, ensuring that each set
+ *        contains a contiguous range of integers {0, ..., n} for some integer n.
+ *
+ * This function concatenates multiple vectors of indices, incrementing each vector's
+ * indices by the total number of vertices processed so far, ensuring that indices
+ * are unique across all sets.
+ *
+ * @pre Each vector of indices must contain a contiguous set of integers {0, ..., n} for some integer n,
+ *      though the indices do not have to be ordered.
+ *
+ * @param indices A vector of vectors, where each inner vector contains a contiguous set of integers.
+ * @return A single vector of indices, flattened and adjusted to ensure uniqueness.
+ *
+ * @note The function asserts that each inner vector follows the precondition of having a contiguous set of integers.
+ */
+std::vector<unsigned int> flatten_and_increment_indices(const std::vector<std::vector<unsigned int>> &indices) {
+    std::vector<unsigned int> flattened_indices;
+
+    // Reserve space for all indices to avoid frequent reallocations
+    size_t total_size = 0;
+    for (const auto &inner_vec : indices) {
+        total_size += inner_vec.size();
+    }
+    flattened_indices.reserve(total_size);
+
+    unsigned int num_indices = 0; // Offset for ensuring unique indices
+
+    // Flatten and increment indices
+    for (const auto &inner_vec : indices) {
+        assert(!inner_vec.empty()); // Ensure the inner vector is non-empty
+
+        // Find the maximum index in the current set
+        unsigned int max_index = *std::max_element(inner_vec.begin(), inner_vec.end());
+
+        // Create the expected set of contiguous indices {0, ..., max_index}
+        std::set<unsigned int> expected_set;
+        for (unsigned int i = 0; i <= max_index; ++i) {
+            expected_set.insert(i);
+        }
+
+        // Create the actual set from the inner vector
+        std::set<unsigned int> actual_set(inner_vec.begin(), inner_vec.end());
+
+        // Assert that the actual set matches the expected contiguous set
+        assert(actual_set == expected_set && "Indices do not form a contiguous set");
+
+        // Increment indices and append to the flattened result
+        for (unsigned int index : inner_vec) {
+            flattened_indices.push_back(index + num_indices);
+        }
+
+        // Update the number of processed vertices (max_index + 1 = total vertices in this set)
+        num_indices += max_index + 1;
+    }
+
+    return flattened_indices;
+}
 
 /**
  *
@@ -51,9 +166,11 @@ int get_num_flattened_vertices_in_n_gon(int n) {
 
 /**
  *
- * \brief generate n equally spaced points on the unit circle
+ * @brief generate n equally spaced points on the unit circle
  *
  * Designed to work with glDrawArrays with a GL_TRIANGLE_FAN setting
+ *
+ * @TODO no longer needs to be called flattened.
  *
  */
 std::vector<glm::vec3> generate_n_gon_flattened_vertices(int n) {
