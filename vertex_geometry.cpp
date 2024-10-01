@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <iostream>
 #include <set>
+#include <numbers>
 
 #include <vector>
 #include <glm/vec3.hpp>
@@ -175,7 +176,7 @@ int get_num_flattened_vertices_in_n_gon(int n) {
  */
 std::vector<glm::vec3> generate_n_gon_flattened_vertices(int n) {
     assert(n >= 3);
-    float angle_increment = (2 * M_PI) / (float)n;
+    float angle_increment = (2 * std::numbers::pi) / (float)n;
     float curr_angle;
 
     std::vector<glm::vec3> n_gon_points;
