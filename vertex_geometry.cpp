@@ -91,6 +91,10 @@ std::vector<unsigned int> flatten_and_increment_indices(const std::vector<std::v
 
     // Flatten and increment indices
     for (const auto &inner_vec : indices) {
+        if (!inner_vec.size()) {
+            continue;
+        }
+
         assert(!inner_vec.empty()); // Ensure the inner vector is non-empty
 
         // Find the maximum index in the current set
