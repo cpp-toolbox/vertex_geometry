@@ -1,7 +1,7 @@
 #ifndef VERTEX_GEOMETRY_HPP
 #define VERTEX_GEOMETRY_HPP
 
-#include "glm/glm.hpp"
+#include <glm/glm.hpp>
 #include <vector>
 
 struct IndexedVertices {
