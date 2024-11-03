@@ -193,6 +193,23 @@ std::vector<glm::vec3> generate_n_gon_flattened_vertices(int n) {
     return n_gon_points;
 }
 
+std::vector<glm::vec3> generate_fibonacci_sphere_vertices(int num_samples, float scale) {
+    std::vector<glm::vec3> points;
+    float phi = M_PI * (std::sqrt(5.0) - 1.0);
+
+    for (int i = 0; i < num_samples; i++) {
+        float y = 1 - ((float)i / ((float)num_samples - 1)) * 2;
+        float radius = std::sqrt(1 - y * y);
+        float theta = phi * (float)i;
+
+        float x = std::cos(theta) * radius;
+        float z = std::sin(theta) * radius;
+        points.emplace_back(x * scale, y * scale, z * scale);
+    }
+
+    return points;
+}
+
 /**
  * \brief Create the points of an arrow pointing from one point to another
  *
