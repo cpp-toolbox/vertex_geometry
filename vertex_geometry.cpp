@@ -155,6 +155,19 @@ std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_
     };
 }
 
+std::vector<glm::vec3> generate_rectangle_vertices_3d(const glm::vec3 &center, const glm::vec3 &width_dir,
+                                                      const glm::vec3 &height_dir, float width, float height) {
+    glm::vec3 half_width_vec = (width / 2.0f) * glm::normalize(width_dir);
+    glm::vec3 half_height_vec = (height / 2.0f) * glm::normalize(height_dir);
+
+    return {
+        center + half_width_vec + half_height_vec, // top right
+        center + half_width_vec - half_height_vec, // bottom right
+        center - half_width_vec - half_height_vec, // bottom left
+        center - half_width_vec + half_height_vec  // top left
+    };
+}
+
 std::vector<unsigned int> generate_rectangle_indices() {
     return {
         // note that we start from 0!

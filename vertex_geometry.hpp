@@ -34,6 +34,9 @@ std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_
 
 std::vector<unsigned int> generate_rectangle_indices();
 
+std::vector<glm::vec3> generate_rectangle_vertices_3d(const glm::vec3 &center, const glm::vec3 &width_dir,
+                                                      const glm::vec3 &height_dir, float width, float height);
+
 std::vector<glm::vec3> generate_arrow_vertices(glm::vec2 start, glm::vec2 end, float stem_thickness, float tip_length);
 
 std::vector<unsigned int> generate_arrow_indices();
