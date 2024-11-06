@@ -27,18 +27,15 @@ IndexedVertices generate_grid(const glm::vec3 &center_position, float width, flo
 std::vector<unsigned int> flatten_and_increment_indices(const std::vector<std::vector<unsigned int>> &indices);
 
 std::vector<glm::vec3> generate_square_vertices(float center_x, float center_y, float side_length);
-
 std::vector<unsigned int> generate_square_indices();
 
 std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_y, float width, float height);
-
 std::vector<unsigned int> generate_rectangle_indices();
 
 std::vector<glm::vec3> generate_rectangle_vertices_3d(const glm::vec3 &center, const glm::vec3 &width_dir,
                                                       const glm::vec3 &height_dir, float width, float height);
 
 std::vector<glm::vec3> generate_arrow_vertices(glm::vec2 start, glm::vec2 end, float stem_thickness, float tip_length);
-
 std::vector<unsigned int> generate_arrow_indices();
 
 void scale_vertices_in_place(std::vector<glm::vec3> &vertices, float scale_factor);
@@ -47,8 +44,9 @@ std::vector<glm::vec3> generate_n_gon_flattened_vertices(int n);
 
 int get_num_flattened_vertices_in_n_gon(int n);
 
-void translate_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &translation);
+std::vector<glm::vec3> generate_fibonacci_sphere_vertices(int num_samples, float scale);
 
+void translate_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &translation);
 void increment_indices_in_place(std::vector<unsigned int> &indices, unsigned int increase);
 
 #endif // VERTEX_GEOMETRY_HPP
