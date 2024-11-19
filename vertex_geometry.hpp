@@ -31,6 +31,7 @@ std::vector<unsigned int> generate_square_indices();
 
 std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_y, float width, float height);
 std::vector<unsigned int> generate_rectangle_indices();
+std::vector<glm::vec2> generate_rectangle_texture_coordinates();
 
 std::vector<glm::vec3> generate_rectangle_vertices_3d(const glm::vec3 &center, const glm::vec3 &width_dir,
                                                       const glm::vec3 &height_dir, float width, float height);

@@ -176,6 +176,15 @@ std::vector<unsigned int> generate_rectangle_indices() {
     };
 }
 
+std::vector<glm::vec2> generate_rectangle_texture_coordinates() {
+    return {
+        glm::vec2(0.0f, 0.0f), // Bottom-left
+        glm::vec2(1.0f, 0.0f), // Bottom-right
+        glm::vec2(1.0f, 1.0f), // Top-right
+        glm::vec2(0.0f, 1.0f)  // Top-left
+    };
+}
+
 int get_num_flattened_vertices_in_n_gon(int n) {
     // we have a central point, and then we repeat the first point again.
     int num_vertices = 1 + (n + 1);
