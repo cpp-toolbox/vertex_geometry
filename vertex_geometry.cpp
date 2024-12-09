@@ -155,6 +155,22 @@ std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_
     };
 }
 
+/**
+ * @brief Generates normals for each corner of a rectangle.
+ *
+ * The rectangle is assumed to lie in the XY plane, with normals pointing along the positive Z-axis.
+ *
+ * @return A vector of glm::vec3 representing the normals for each corner.
+ */
+std::vector<glm::vec3> generate_rectangle_normals() {
+    return {
+        {0.0f, 0.0f, 1.0f}, // Normal for top right corner
+        {0.0f, 0.0f, 1.0f}, // Normal for bottom right corner
+        {0.0f, 0.0f, 1.0f}, // Normal for bottom left corner
+        {0.0f, 0.0f, 1.0f}  // Normal for top left corner
+    };
+}
+
 std::vector<glm::vec3> generate_rectangle_vertices_3d(const glm::vec3 &center, const glm::vec3 &width_dir,
                                                       const glm::vec3 &height_dir, float width, float height) {
     glm::vec3 half_width_vec = (width / 2.0f) * glm::normalize(width_dir);

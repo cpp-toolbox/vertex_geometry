@@ -15,6 +15,7 @@ struct Rectangle {
     float height;     // Height of the rectangle
 };
 
+std::vector<glm::vec3> generate_rectangle_normals();
 std::vector<Rectangle> generate_grid_rectangles(const glm::vec3 &center_position, float base_width, float base_height,
                                                 int num_rectangles_x, int num_rectangles_y, float spacing);
 
