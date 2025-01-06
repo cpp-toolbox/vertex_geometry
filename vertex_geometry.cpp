@@ -10,6 +10,30 @@
 #include <vector>
 #include <glm/vec3.hpp>
 
+Rectangle create_rectangle(float x_pos, float y_pos, float width, float height) {
+    return {glm::vec3(x_pos, y_pos, 0), width, height};
+}
+
+Rectangle create_rectangle_from_top_left(const glm::vec3 &top_left, float width, float height) {
+    return {top_left + glm::vec3(width / 2.0f, -height / 2.0f, 0.0f), width, height};
+}
+
+Rectangle create_rectangle_from_top_right(const glm::vec3 &top_right, float width, float height) {
+    return {top_right + glm::vec3(-width / 2.0f, -height / 2.0f, 0.0f), width, height};
+}
+
+Rectangle create_rectangle_from_bottom_left(const glm::vec3 &bottom_left, float width, float height) {
+    return {bottom_left + glm::vec3(width / 2.0f, height / 2.0f, 0.0f), width, height};
+}
+
+Rectangle create_rectangle_from_bottom_right(const glm::vec3 &bottom_right, float width, float height) {
+    return {bottom_right + glm::vec3(-width / 2.0f, height / 2.0f, 0.0f), width, height};
+}
+
+Rectangle create_rectangle_from_center(const glm::vec3 &center, float width, float height) {
+    return {center, width, height};
+}
+
 std::vector<Rectangle> generate_grid_rectangles(const glm::vec3 &center_position, float width, float height,
                                                 int num_rectangles_x, int num_rectangles_y, float spacing) {
     std::vector<Rectangle> rectangles;

@@ -15,6 +15,13 @@ struct Rectangle {
     float height;     // Height of the rectangle
 };
 
+Rectangle create_rectangle(float x_pos, float y_pos, float width, float height);
+Rectangle create_rectangle_from_top_left(const glm::vec3 &top_left, float width, float height);
+Rectangle create_rectangle_from_top_right(const glm::vec3 &top_right, float width, float height);
+Rectangle create_rectangle_from_bottom_left(const glm::vec3 &bottom_left, float width, float height);
+Rectangle create_rectangle_from_bottom_right(const glm::vec3 &bottom_right, float width, float height);
+Rectangle create_rectangle_from_center(const glm::vec3 &center, float width, float height);
+
 std::vector<glm::vec3> generate_rectangle_normals();
 std::vector<Rectangle> generate_grid_rectangles(const glm::vec3 &center_position, float base_width, float base_height,
                                                 int num_rectangles_x, int num_rectangles_y, float spacing);
