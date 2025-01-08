@@ -13,6 +13,11 @@
 #include <stdexcept>
 #include <vector>
 
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
+
+
 IndexedVertices Rectangle::get_ivs() {
     return IndexedVertices(generate_rectangle_vertices(this->center.x, this->center.y, this->width, this->height),
                            generate_rectangle_indices());
