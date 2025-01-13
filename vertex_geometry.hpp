@@ -3,6 +3,8 @@
 
 #include <glm/glm.hpp>
 #include <vector>
+#include <cmath>
+#include <stdexcept>
 
 struct IndexedVertices {
     std::vector<glm::vec3> vertices;   // Vertices of the grid
@@ -64,6 +66,8 @@ class Grid {
     float rect_height; // Height of each rectangle
 };
 
+Rectangle create_rectangle_from_corners(const glm::vec3 top_left, const glm::vec3 top_right,
+                                        const glm::vec3 bottom_left, const glm::vec3 bottom_right);
 Rectangle create_rectangle(float x_pos, float y_pos, float width, float height);
 Rectangle create_rectangle_from_top_left(const glm::vec3 &top_left, float width, float height);
 Rectangle create_rectangle_from_top_right(const glm::vec3 &top_right, float width, float height);

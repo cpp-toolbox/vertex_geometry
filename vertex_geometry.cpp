@@ -14,9 +14,47 @@
 #include <vector>
 
 #ifndef M_PI
-    #define M_PI 3.14159265358979323846
+#define M_PI 3.14159265358979323846
 #endif
 
+float dot(const glm::vec3 &a, const glm::vec3 &b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+
+bool is_right_angle(const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 &c) {
+    glm::vec3 ab = b - a;
+    glm::vec3 bc = c - b;
+    return dot(ab, bc) == 0.0f; // Check if the vectors are perpendicular (dot product = 0)
+}
+
+bool are_valid_rectangle_corners(const glm::vec3 &top_left, const glm::vec3 &top_right, const glm::vec3 &bottom_left,
+                                 const glm::vec3 &bottom_right) {
+    return is_right_angle(top_left, top_right, bottom_right) && is_right_angle(top_right, bottom_right, bottom_left) &&
+           is_right_angle(bottom_right, bottom_left, top_left) && is_right_angle(bottom_left, top_left, top_right);
+}
+
+Rectangle create_rectangle_from_corners(const glm::vec3 top_left, const glm::vec3 top_right,
+                                        const glm::vec3 bottom_left, const glm::vec3 bottom_right) {
+    // Check if the corners form a valid rectangle
+    if (!are_valid_rectangle_corners(top_left, top_right, bottom_left, bottom_right)) {
+        throw std::invalid_argument("The points do not form a valid rectangle.");
+    }
+
+    // Compute the center of the rectangle as the midpoint of the diagonals
+    glm::vec3 diag1 = (top_left + bottom_right) / 2.0f;
+    glm::vec3 diag2 = (top_right + bottom_left) / 2.0f;
+    glm::vec3 center = (diag1 + diag2) / 2.0f;
+
+    // Calculate the width and height using the distance between corners
+    float width = glm::length(top_left - top_right);
+    float height = glm::length(top_left - bottom_left);
+
+    // Create and return the Rectangle object
+    Rectangle rect;
+    rect.center = center;
+    rect.width = width;
+    rect.height = height;
+
+    return rect;
+}
 
 IndexedVertices Rectangle::get_ivs() {
     return IndexedVertices(generate_rectangle_vertices(this->center.x, this->center.y, this->width, this->height),
