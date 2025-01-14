@@ -34,6 +34,9 @@ IndexedVertices generate_grid(const glm::vec3 &center_position, float width, flo
 
 std::vector<unsigned int> flatten_and_increment_indices(const std::vector<std::vector<unsigned int>> &indices);
 
+std::vector<glm::vec3> generate_unit_cube_vertices();
+std::vector<unsigned int> generate_cube_indices();
+
 std::vector<glm::vec3> generate_square_vertices(float center_x, float center_y, float side_length);
 std::vector<unsigned int> generate_square_indices();
 

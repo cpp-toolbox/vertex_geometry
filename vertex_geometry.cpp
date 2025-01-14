@@ -178,6 +178,31 @@ std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_
         {center_x - half_width, center_y + half_height, 0.0f}  // top left
     };
 }
+std::vector<glm::vec3> cube_vertex_positions = {{-1.0f, -1.0f, 1.0f},  // 0  Coordinates
+                                                {1.0f, -1.0f, 1.0f},   // 1       7--------6
+                                                {1.0f, -1.0f, -1.0f},  // 2       /|       /|
+                                                {-1.0f, -1.0f, -1.0f}, // 3      4--------5 |
+                                                {-1.0f, 1.0f, 1.0f},   // 4      | |      | |
+                                                {1.0f, 1.0f, 1.0f},    // 5      | 3------|-2
+                                                {1.0f, 1.0f, -1.0f},   // 6      |/       |/
+                                                {-1.0f, 1.0f, -1.0f}}; // 7      0--------1
+
+std::vector<glm::vec3> generate_unit_cube_vertices() { return cube_vertex_positions; }
+
+std::vector<unsigned int> cube_vertex_indices = { // Right
+    1, 2, 6, 6, 5, 1,
+    // Left
+    0, 4, 7, 7, 3, 0,
+    // Top
+    4, 5, 6, 6, 7, 4,
+    // Bottom
+    0, 3, 2, 2, 1, 0,
+    // Back
+    0, 1, 5, 5, 4, 0,
+    // Front
+    3, 7, 6, 6, 2, 3};
+
+std::vector<unsigned int> generate_cube_indices() { return cube_vertex_indices; }
 
 /**
  * @brief Generates normals for each corner of a rectangle.
