@@ -16,8 +16,11 @@ class Rectangle {
     glm::vec3 center; // Center position
     float width;      // Width of the rectangle
     float height;     // Height of the rectangle
-    IndexedVertices get_ivs();
+    IndexedVertices get_ivs() const;
+    friend std::ostream &operator<<(std::ostream &os, const Rectangle &rect);
 };
+
+Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset);
 
 class Grid {
   public:
@@ -25,33 +28,8 @@ class Grid {
     Grid(int rows, int cols, const Rectangle &rect);
 
     Rectangle get_at(int col, int row) const;
-
-    /**
-     * @brief Get all rectangles inside a bounding box specified by two row-column pairs.
-     *
-     * @param row1 Starting row index (0-based).
-     * @param col1 Starting column index (0-based).
-     * @param row2 Ending row index (0-based).
-     * @param col2 Ending column index (0-based).
-     * @return A vector containing all rectangles within the specified bounding box.
-     * @throws std::out_of_range if any row or column indices are out of bounds.
-     */
     std::vector<Rectangle> get_rectangles_in_bounding_box(int row1, int col1, int row2, int col2) const;
-
-    /**
-     * @brief Get all rectangles in a specific row.
-     * @param row Row index (0-based).
-     * @return A vector of rectangles in the specified row.
-     * @throws std::out_of_range if the row is out of bounds.
-     */
     std::vector<Rectangle> get_row(int row) const;
-
-    /**
-     * @brief Get all rectangles in a specific column.
-     * @param col Column index (0-based).
-     * @return A vector of rectangles in the specified column.
-     * @throws std::out_of_range if the column is out of bounds.
-     */
     std::vector<Rectangle> get_column(int col) const;
 
     const int rows; // Number of rows in the grid
@@ -74,6 +52,9 @@ Rectangle create_rectangle_from_top_right(const glm::vec3 &top_right, float widt
 Rectangle create_rectangle_from_bottom_left(const glm::vec3 &bottom_left, float width, float height);
 Rectangle create_rectangle_from_bottom_right(const glm::vec3 &bottom_right, float width, float height);
 Rectangle create_rectangle_from_center(const glm::vec3 &center, float width, float height);
+
+std::vector<Rectangle> weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights,
+                                            bool vertical = true);
 
 std::vector<glm::vec3> generate_rectangle_normals();
 std::vector<Rectangle> generate_grid_rectangles(const glm::vec3 &center_position, float base_width, float base_height,

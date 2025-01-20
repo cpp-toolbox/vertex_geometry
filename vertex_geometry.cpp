@@ -17,6 +17,14 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+std::ostream &operator<<(std::ostream &os, const Rectangle &rect) {
+    os << "Rectangle("
+       << "Center: (" << rect.center.x << ", " << rect.center.y << ", " << rect.center.z << "), "
+       << "Width: " << rect.width << ", "
+       << "Height: " << rect.height << ")";
+    return os;
+}
+
 float dot(const glm::vec3 &a, const glm::vec3 &b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
 
 bool is_right_angle(const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 &c) {
@@ -56,7 +64,7 @@ Rectangle create_rectangle_from_corners(const glm::vec3 top_left, const glm::vec
     return rect;
 }
 
-IndexedVertices Rectangle::get_ivs() {
+IndexedVertices Rectangle::get_ivs() const {
     return IndexedVertices(generate_rectangle_vertices(this->center.x, this->center.y, this->width, this->height),
                            generate_rectangle_indices());
 }
@@ -156,6 +164,60 @@ Rectangle create_rectangle_from_bottom_right(const glm::vec3 &bottom_right, floa
 
 Rectangle create_rectangle_from_center(const glm::vec3 &center, float width, float height) {
     return {center, width, height};
+}
+
+Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset) {
+    Rectangle new_rect = rect;
+
+    // Slide the rectangle's center by the given offsets multiplied by width and height
+    new_rect.center.x += x_offset * rect.width;
+    new_rect.center.y += y_offset * rect.height;
+
+    return new_rect;
+}
+
+std::vector<Rectangle> weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights,
+                                            bool vertical) {
+    std::vector<Rectangle> subrectangles;
+    float total_weight = 0.0f;
+
+    // Calculate total weight
+    for (auto weight : weights) {
+        total_weight += static_cast<float>(weight);
+    }
+
+    // Initialize start position (for top-left corner or bottom-left corner)
+    float start_position = (vertical) ? rect.center.y + rect.height / 2 : rect.center.x - rect.width / 2;
+    float current_position = start_position;
+
+    // Generate subrectangles
+    for (size_t i = 0; i < weights.size(); ++i) {
+        float subdivision_size =
+            (static_cast<float>(weights[i]) / total_weight) * (vertical ? rect.height : rect.width);
+
+        Rectangle subrect;
+        if (vertical) {
+            // Create subrectangle vertically from top to bottom
+            subrect.center = rect.center;
+            subrect.center.y = current_position - subdivision_size / 2;
+            subrect.width = rect.width;
+            subrect.height = subdivision_size;
+            // Update the current position for the next subdivision (move downwards)
+            current_position -= subdivision_size;
+        } else {
+            // Create subrectangle horizontally from left to right
+            subrect.center = rect.center;
+            subrect.center.x = current_position + subdivision_size / 2;
+            subrect.width = subdivision_size;
+            subrect.height = rect.height;
+            // Update the current position for the next subdivision (move rightwards)
+            current_position += subdivision_size;
+        }
+
+        subrectangles.push_back(subrect);
+    }
+
+    return subrectangles;
 }
 
 std::vector<Rectangle> generate_grid_rectangles(const glm::vec3 &center_position, float width, float height,
