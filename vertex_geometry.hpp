@@ -6,6 +6,8 @@
 #include <cmath>
 #include <stdexcept>
 
+namespace vertex_geometry {
+
 struct IndexedVertices {
     std::vector<glm::vec3> vertices;   // Vertices of the grid
     std::vector<unsigned int> indices; // Flattened indices of the grid
@@ -94,5 +96,6 @@ std::vector<glm::vec3> generate_fibonacci_sphere_vertices(int num_samples, float
 
 void translate_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &translation);
 void increment_indices_in_place(std::vector<unsigned int> &indices, unsigned int increase);
+} // namespace vertex_geometry
 
 #endif // VERTEX_GEOMETRY_HPP

@@ -17,6 +17,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+namespace vertex_geometry {
+
 std::ostream &operator<<(std::ostream &os, const Rectangle &rect) {
     os << "Rectangle("
        << "Center: (" << rect.center.x << ", " << rect.center.y << ", " << rect.center.z << "), "
@@ -586,3 +588,4 @@ void increment_indices_in_place(std::vector<unsigned int> &indices, unsigned int
         index += increase;
     }
 }
+} // namespace vertex_geometry
