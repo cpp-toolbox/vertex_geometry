@@ -366,6 +366,108 @@ std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_
         {center_x - half_width, center_y + half_height, 0.0f}  // top left
     };
 }
+
+IndexedVertexPositions generate_cone(int segments, float height, float radius) {
+    std::vector<glm::vec3> vertices;
+    std::vector<unsigned int> indices;
+
+    float half_height = height / 2.0f;
+    float angle_increment = 2.0f * M_PI / segments;
+
+    // Top vertex (apex of the cone)
+    vertices.push_back(glm::vec3(0.0f, half_height, 0.0f));
+
+    // Bottom center vertex
+    vertices.push_back(glm::vec3(0.0f, -half_height, 0.0f));
+
+    // Generate vertices for the bottom circle
+    for (int i = 0; i < segments; ++i) {
+        float angle = i * angle_increment;
+        float x = radius * cos(angle);
+        float z = radius * sin(angle);
+        vertices.push_back(glm::vec3(x, -half_height, z));
+    }
+
+    // Generate indices for the bottom face (fan)
+    for (int i = 0; i < segments; ++i) {
+        indices.push_back(1); // Bottom center vertex
+        indices.push_back(2 + i);
+        indices.push_back(2 + ((i + 1) % segments));
+    }
+
+    // Generate indices for the side faces
+    for (int i = 0; i < segments; ++i) {
+        indices.push_back(0); // Apex of the cone
+        indices.push_back(2 + ((i + 1) % segments));
+        indices.push_back(2 + i);
+    }
+
+    return {indices, vertices};
+}
+
+IndexedVertexPositions generate_cylinder(int segments, float height, float radius) {
+    std::vector<glm::vec3> vertices;
+    std::vector<unsigned int> indices;
+
+    float half_height = height / 2.0f;
+    float angle_increment = 2.0f * M_PI / segments;
+
+    // Top center vertex
+    vertices.push_back(glm::vec3(0.0f, half_height, 0.0f));
+
+    // Bottom center vertex
+    vertices.push_back(glm::vec3(0.0f, -half_height, 0.0f));
+
+    // Generate vertices for top and bottom circles
+    for (int i = 0; i < segments; ++i) {
+        float angle = i * angle_increment;
+        float x = radius * cos(angle);
+        float z = radius * sin(angle);
+
+        // Top circle
+        vertices.push_back(glm::vec3(x, half_height, z));
+
+        // Bottom circle
+        vertices.push_back(glm::vec3(x, -half_height, z));
+    }
+
+    // Generate indices for the top face
+    for (int i = 0; i < segments; ++i) {
+        indices.push_back(0); // Top center vertex
+        indices.push_back(2 + (i * 2));
+        indices.push_back(2 + ((i * 2 + 2) % (segments * 2)));
+    }
+
+    // Generate indices for the bottom face
+    for (int i = 0; i < segments; ++i) {
+        indices.push_back(1); // Bottom center vertex
+        indices.push_back(3 + ((i * 2) % (segments * 2)));
+        indices.push_back(3 + ((i * 2 + 2) % (segments * 2)));
+    }
+
+    // Generate indices for the side faces
+    for (int i = 0; i < segments; ++i) {
+        int top1 = 2 + (i * 2);
+        int bottom1 = 3 + (i * 2);
+        int top2 = 2 + ((i * 2 + 2) % (segments * 2));
+        int bottom2 = 3 + ((i * 2 + 2) % (segments * 2));
+
+        // First triangle
+        indices.push_back(top1);
+        indices.push_back(bottom1);
+        indices.push_back(top2);
+
+        // Second triangle
+        indices.push_back(top2);
+        indices.push_back(bottom1);
+        indices.push_back(bottom2);
+    }
+
+    return {indices, vertices};
+}
+
+IndexedVertexPositions generate_unit_cube() { return {generate_cube_indices(), generate_unit_cube_vertices()}; }
+
 std::vector<glm::vec3> cube_vertex_positions = {{-1.0f, -1.0f, 1.0f},  // 0  Coordinates
                                                 {1.0f, -1.0f, 1.0f},   // 1       7--------6
                                                 {1.0f, -1.0f, -1.0f},  // 2       /|       /|
