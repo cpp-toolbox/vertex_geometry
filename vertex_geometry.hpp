@@ -24,6 +24,7 @@ class Rectangle {
 };
 
 Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset);
+Rectangle get_bounding_rectangle(const std::vector<Rectangle> &rectangles);
 
 class Grid {
   public:
@@ -71,10 +72,11 @@ IndexedVertices generate_grid(const glm::vec3 &center_position, float width, flo
 
 std::vector<unsigned int> flatten_and_increment_indices(const std::vector<std::vector<unsigned int>> &indices);
 
-IndexedVertexPositions generate_cone(int segments, float height, float radius);
-IndexedVertexPositions generate_cylinder(int segments, float height, float radius);
+draw_info::IndexedVertexPositions generate_cone(int segments, float height, float radius);
+draw_info::IndexedVertexPositions generate_cylinder(int segments, float height, float radius);
+draw_info::IndexedVertexPositions generate_icosphere(int subdivisions, float radius);
 
-IndexedVertexPositions generate_unit_cube();
+draw_info::IndexedVertexPositions generate_unit_cube();
 std::vector<glm::vec3> generate_unit_cube_vertices();
 std::vector<unsigned int> generate_cube_indices();
 

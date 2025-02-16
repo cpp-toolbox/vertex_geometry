@@ -13,6 +13,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include <map>
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -176,6 +178,39 @@ Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset) {
     new_rect.center.y += y_offset * rect.height;
 
     return new_rect;
+}
+
+Rectangle get_bounding_rectangle(const std::vector<Rectangle> &rectangles) {
+    if (rectangles.empty()) {
+        return {{0.0f, 0.0f, 0.0f}, 0.0f, 0.0f};
+    }
+
+    float min_x = std::numeric_limits<float>::max();
+    float max_x = std::numeric_limits<float>::lowest();
+    float min_y = std::numeric_limits<float>::max();
+    float max_y = std::numeric_limits<float>::lowest();
+
+    for (const auto &rect : rectangles) {
+        float left = rect.center.x - rect.width / 2;
+        float right = rect.center.x + rect.width / 2;
+        float bottom = rect.center.y - rect.height / 2;
+        float top = rect.center.y + rect.height / 2;
+
+        if (left < min_x)
+            min_x = left;
+        if (right > max_x)
+            max_x = right;
+        if (bottom < min_y)
+            min_y = bottom;
+        if (top > max_y)
+            max_y = top;
+    }
+
+    float bounding_width = max_x - min_x;
+    float bounding_height = max_y - min_y;
+    glm::vec3 bounding_center((min_x + max_x) / 2.0f, (min_y + max_y) / 2.0f, 0.0f);
+
+    return {bounding_center, bounding_width, bounding_height};
 }
 
 std::vector<Rectangle> weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights,
@@ -367,7 +402,7 @@ std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_
     };
 }
 
-IndexedVertexPositions generate_cone(int segments, float height, float radius) {
+draw_info::IndexedVertexPositions generate_cone(int segments, float height, float radius) {
     std::vector<glm::vec3> vertices;
     std::vector<unsigned int> indices;
 
@@ -405,7 +440,7 @@ IndexedVertexPositions generate_cone(int segments, float height, float radius) {
     return {indices, vertices};
 }
 
-IndexedVertexPositions generate_cylinder(int segments, float height, float radius) {
+draw_info::IndexedVertexPositions generate_cylinder(int segments, float height, float radius) {
     std::vector<glm::vec3> vertices;
     std::vector<unsigned int> indices;
 
@@ -466,10 +501,82 @@ IndexedVertexPositions generate_cylinder(int segments, float height, float radiu
     return {indices, vertices};
 }
 
-IndexedVertexPositions generate_unit_cube() { return {generate_cube_indices(), generate_unit_cube_vertices()}; }
+// Function to generate the initial icosahedron vertices
+std::vector<glm::vec3> generate_initial_icosahedron_vertices(float radius) {
+    const float phi = (1.0f + std::sqrt(5.0f)) / 2.0f;
+    return {
+        glm::normalize(glm::vec3(-1, phi, 0)) * radius, glm::normalize(glm::vec3(1, phi, 0)) * radius,
+        glm::normalize(glm::vec3(-1, -phi, 0)) * radius, glm::normalize(glm::vec3(1, -phi, 0)) * radius,
+        glm::normalize(glm::vec3(0, -1, phi)) * radius, glm::normalize(glm::vec3(0, 1, phi)) * radius,
+        glm::normalize(glm::vec3(0, -1, -phi)) * radius, glm::normalize(glm::vec3(0, 1, -phi)) * radius,
+        glm::normalize(glm::vec3(phi, 0, -1)) * radius, glm::normalize(glm::vec3(phi, 0, 1)) * radius,
+        glm::normalize(glm::vec3(-phi, 0, -1)) * radius, glm::normalize(glm::vec3(-phi, 0, 1)) * radius
+    };
+}
+
+// Function to generate the initial icosahedron indices
+std::vector<unsigned int> generate_initial_icosahedron_indices() {
+    return {
+        0u, 11u, 5u, 0u, 5u, 1u, 0u, 1u, 7u, 0u, 7u, 10u, 0u, 10u, 11u,
+        1u, 5u, 9u, 5u, 11u, 4u, 11u, 10u, 2u, 10u, 7u, 6u, 7u, 1u,
+        8u, 3u, 9u, 4u, 3u, 4u, 2u, 3u, 2u, 6u, 3u, 6u, 8u, 3u, 8u, 9u,
+        4u, 9u, 5u, 2u, 4u, 11u, 6u, 2u, 10u, 8u, 6u, 7u, 9u, 8u, 1u
+    };
+}
+
+// Function to get the midpoint vertex index
+int get_midpoint(int a, int b, std::map<std::pair<int, int>, int>& midpoint_cache, std::vector<glm::vec3>& vertices, float radius) {
+    auto key = std::minmax(a, b);
+    if (midpoint_cache.count(key)) {
+        return midpoint_cache[key];
+    }
+    glm::vec3 mid = glm::normalize((vertices[a] + vertices[b]) * 0.5f) * radius;
+    vertices.push_back(mid);
+    int idx = vertices.size() - 1;
+    midpoint_cache[key] = idx;
+    return idx;
+}
+
+// Function to subdivide the icosahedron
+void subdivide_icosahedron(int subdivisions, std::vector<glm::vec3>& vertices, std::vector<unsigned int>& indices, float radius) {
+    std::map<std::pair<int, int>, int> midpoint_cache;
+    for (int i = 0; i < subdivisions; ++i) {
+        std::vector<unsigned int> new_indices;
+        for (size_t j = 0; j < indices.size(); j += 3) {
+            int a = indices[j];
+            int b = indices[j + 1];
+            int c = indices[j + 2];
+
+            int ab = get_midpoint(a, b, midpoint_cache, vertices, radius);
+            int bc = get_midpoint(b, c, midpoint_cache, vertices, radius);
+            int ca = get_midpoint(c, a, midpoint_cache, vertices, radius);
+
+            new_indices.insert(new_indices.end(), {
+                static_cast<unsigned int>(a), static_cast<unsigned int>(ab), static_cast<unsigned int>(ca),
+                static_cast<unsigned int>(b), static_cast<unsigned int>(bc), static_cast<unsigned int>(ab),
+                static_cast<unsigned int>(c), static_cast<unsigned int>(ca), static_cast<unsigned int>(bc),
+                static_cast<unsigned int>(ab), static_cast<unsigned int>(bc), static_cast<unsigned int>(ca)
+            });
+        }
+        indices = std::move(new_indices);
+    }
+}
+
+draw_info::IndexedVertexPositions generate_icosphere(int subdivisions, float radius) {
+    std::vector<glm::vec3> vertices = generate_initial_icosahedron_vertices(radius);
+    std::vector<unsigned int> indices = generate_initial_icosahedron_indices();
+
+    subdivide_icosahedron(subdivisions, vertices, indices, radius);
+
+    return {indices, vertices};
+}
+
+draw_info::IndexedVertexPositions generate_unit_cube() {
+    return {generate_cube_indices(), generate_unit_cube_vertices()};
+}
 
 std::vector<glm::vec3> cube_vertex_positions = {{-1.0f, -1.0f, 1.0f},  // 0  Coordinates
-                                                {1.0f, -1.0f, 1.0f},   // 1       7--------6
+                                                {1.0f, -1.0f, 1.0f},   // 1        7--------6
                                                 {1.0f, -1.0f, -1.0f},  // 2       /|       /|
                                                 {-1.0f, -1.0f, -1.0f}, // 3      4--------5 |
                                                 {-1.0f, 1.0f, 1.0f},   // 4      | |      | |
