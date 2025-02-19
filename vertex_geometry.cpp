@@ -274,15 +274,15 @@ IndexedVertices generate_grid(const glm::vec3 &center_position, float base_width
 }
 
 /**
- * @brief Flattens and increments a collection of index sets, ensuring that each set
- *        contains a contiguous range of integers {0, ..., n} for some integer n.
+ * @brief Flattens and increments a collection of index sets
+ *
+ *
+ * @pre Each vector of indices must contain a contiguous set of integers {0, ..., n} for some integer n,
+ *      though the indices do not have to be ordered.
  *
  * This function concatenates multiple vectors of indices, incrementing each vector's
  * indices by the total number of vertices processed so far, ensuring that indices
  * are unique across all sets.
- *
- * @pre Each vector of indices must contain a contiguous set of integers {0, ..., n} for some integer n,
- *      though the indices do not have to be ordered.
  *
  * @param indices A vector of vectors, where each inner vector contains a contiguous set of integers.
  * @return A single vector of indices, flattened and adjusted to ensure uniqueness.
