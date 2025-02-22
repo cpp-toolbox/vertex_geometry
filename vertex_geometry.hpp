@@ -96,8 +96,16 @@ std::vector<unsigned int> generate_arrow_indices();
 void scale_vertices_in_place(std::vector<glm::vec3> &vertices, float scale_factor);
 
 std::vector<glm::vec3> generate_n_gon_flattened_vertices(int n);
-
 int get_num_flattened_vertices_in_n_gon(int n);
+
+std::vector<glm::vec3> generate_annulus_vertices(float center_x, float center_y, float outer_radius, float inner_radius,
+                                                 int num_segments);
+std::vector<unsigned int> generate_annulus_indices(int num_segments);
+
+// points are the points of the star
+std::vector<glm::vec3> generate_star_vertices(float center_x, float center_y, float outer_radius, float inner_radius,
+                                              int num_star_tips, bool blunt_tips = false);
+std::vector<unsigned int> generate_star_indices(int num_star_tips, bool blunt_tips);
 
 std::vector<glm::vec3> generate_fibonacci_sphere_vertices(int num_samples, float scale);
 

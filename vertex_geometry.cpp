@@ -504,28 +504,24 @@ draw_info::IndexedVertexPositions generate_cylinder(int segments, float height, 
 // Function to generate the initial icosahedron vertices
 std::vector<glm::vec3> generate_initial_icosahedron_vertices(float radius) {
     const float phi = (1.0f + std::sqrt(5.0f)) / 2.0f;
-    return {
-        glm::normalize(glm::vec3(-1, phi, 0)) * radius, glm::normalize(glm::vec3(1, phi, 0)) * radius,
-        glm::normalize(glm::vec3(-1, -phi, 0)) * radius, glm::normalize(glm::vec3(1, -phi, 0)) * radius,
-        glm::normalize(glm::vec3(0, -1, phi)) * radius, glm::normalize(glm::vec3(0, 1, phi)) * radius,
-        glm::normalize(glm::vec3(0, -1, -phi)) * radius, glm::normalize(glm::vec3(0, 1, -phi)) * radius,
-        glm::normalize(glm::vec3(phi, 0, -1)) * radius, glm::normalize(glm::vec3(phi, 0, 1)) * radius,
-        glm::normalize(glm::vec3(-phi, 0, -1)) * radius, glm::normalize(glm::vec3(-phi, 0, 1)) * radius
-    };
+    return {glm::normalize(glm::vec3(-1, phi, 0)) * radius,  glm::normalize(glm::vec3(1, phi, 0)) * radius,
+            glm::normalize(glm::vec3(-1, -phi, 0)) * radius, glm::normalize(glm::vec3(1, -phi, 0)) * radius,
+            glm::normalize(glm::vec3(0, -1, phi)) * radius,  glm::normalize(glm::vec3(0, 1, phi)) * radius,
+            glm::normalize(glm::vec3(0, -1, -phi)) * radius, glm::normalize(glm::vec3(0, 1, -phi)) * radius,
+            glm::normalize(glm::vec3(phi, 0, -1)) * radius,  glm::normalize(glm::vec3(phi, 0, 1)) * radius,
+            glm::normalize(glm::vec3(-phi, 0, -1)) * radius, glm::normalize(glm::vec3(-phi, 0, 1)) * radius};
 }
 
 // Function to generate the initial icosahedron indices
 std::vector<unsigned int> generate_initial_icosahedron_indices() {
-    return {
-        0u, 11u, 5u, 0u, 5u, 1u, 0u, 1u, 7u, 0u, 7u, 10u, 0u, 10u, 11u,
-        1u, 5u, 9u, 5u, 11u, 4u, 11u, 10u, 2u, 10u, 7u, 6u, 7u, 1u,
-        8u, 3u, 9u, 4u, 3u, 4u, 2u, 3u, 2u, 6u, 3u, 6u, 8u, 3u, 8u, 9u,
-        4u, 9u, 5u, 2u, 4u, 11u, 6u, 2u, 10u, 8u, 6u, 7u, 9u, 8u, 1u
-    };
+    return {0u, 11u, 5u,  0u, 5u,  1u, 0u, 1u, 7u, 0u, 7u,  10u, 0u, 10u, 11u, 1u, 5u, 9u, 5u, 11u,
+            4u, 11u, 10u, 2u, 10u, 7u, 6u, 7u, 1u, 8u, 3u,  9u,  4u, 3u,  4u,  2u, 3u, 2u, 6u, 3u,
+            6u, 8u,  3u,  8u, 9u,  4u, 9u, 5u, 2u, 4u, 11u, 6u,  2u, 10u, 8u,  6u, 7u, 9u, 8u, 1u};
 }
 
 // Function to get the midpoint vertex index
-int get_midpoint(int a, int b, std::map<std::pair<int, int>, int>& midpoint_cache, std::vector<glm::vec3>& vertices, float radius) {
+int get_midpoint(int a, int b, std::map<std::pair<int, int>, int> &midpoint_cache, std::vector<glm::vec3> &vertices,
+                 float radius) {
     auto key = std::minmax(a, b);
     if (midpoint_cache.count(key)) {
         return midpoint_cache[key];
@@ -538,7 +534,8 @@ int get_midpoint(int a, int b, std::map<std::pair<int, int>, int>& midpoint_cach
 }
 
 // Function to subdivide the icosahedron
-void subdivide_icosahedron(int subdivisions, std::vector<glm::vec3>& vertices, std::vector<unsigned int>& indices, float radius) {
+void subdivide_icosahedron(int subdivisions, std::vector<glm::vec3> &vertices, std::vector<unsigned int> &indices,
+                           float radius) {
     std::map<std::pair<int, int>, int> midpoint_cache;
     for (int i = 0; i < subdivisions; ++i) {
         std::vector<unsigned int> new_indices;
@@ -551,12 +548,12 @@ void subdivide_icosahedron(int subdivisions, std::vector<glm::vec3>& vertices, s
             int bc = get_midpoint(b, c, midpoint_cache, vertices, radius);
             int ca = get_midpoint(c, a, midpoint_cache, vertices, radius);
 
-            new_indices.insert(new_indices.end(), {
-                static_cast<unsigned int>(a), static_cast<unsigned int>(ab), static_cast<unsigned int>(ca),
-                static_cast<unsigned int>(b), static_cast<unsigned int>(bc), static_cast<unsigned int>(ab),
-                static_cast<unsigned int>(c), static_cast<unsigned int>(ca), static_cast<unsigned int>(bc),
-                static_cast<unsigned int>(ab), static_cast<unsigned int>(bc), static_cast<unsigned int>(ca)
-            });
+            new_indices.insert(new_indices.end(), {static_cast<unsigned int>(a), static_cast<unsigned int>(ab),
+                                                   static_cast<unsigned int>(ca), static_cast<unsigned int>(b),
+                                                   static_cast<unsigned int>(bc), static_cast<unsigned int>(ab),
+                                                   static_cast<unsigned int>(c), static_cast<unsigned int>(ca),
+                                                   static_cast<unsigned int>(bc), static_cast<unsigned int>(ab),
+                                                   static_cast<unsigned int>(bc), static_cast<unsigned int>(ca)});
         }
         indices = std::move(new_indices);
     }
@@ -678,6 +675,104 @@ std::vector<glm::vec3> generate_n_gon_flattened_vertices(int n) {
         n_gon_points.push_back(point);
     }
     return n_gon_points;
+}
+
+std::vector<glm::vec3> generate_annulus_vertices(float center_x, float center_y, float outer_radius, float inner_radius,
+                                                 int num_segments) {
+    std::vector<glm::vec3> vertices;
+    float angle_step = 2.0f * M_PI / num_segments;
+
+    for (int i = 0; i < num_segments; ++i) {
+        float angle = i * angle_step;
+        float cos_angle = std::cos(angle);
+        float sin_angle = std::sin(angle);
+
+        // outer ring
+        vertices.emplace_back(center_x + outer_radius * cos_angle, center_y + outer_radius * sin_angle, 0.0f);
+        // inner ring
+        vertices.emplace_back(center_x + inner_radius * cos_angle, center_y + inner_radius * sin_angle, 0.0f);
+    }
+
+    return vertices;
+}
+
+std::vector<unsigned int> generate_annulus_indices(int num_segments) {
+    std::vector<unsigned int> indices;
+
+    for (int i = 0; i < num_segments; ++i) {
+        int next = (i + 1) % num_segments;
+
+        // triangle 1
+        indices.push_back(2 * i);
+        indices.push_back(2 * next);
+        indices.push_back(2 * i + 1);
+
+        // triangle 2
+        indices.push_back(2 * next);
+        indices.push_back(2 * next + 1);
+        indices.push_back(2 * i + 1);
+    }
+
+    return indices;
+}
+
+std::vector<glm::vec3> generate_star_vertices(float center_x, float center_y, float outer_radius, float inner_radius,
+                                              int num_star_tips, bool blunt_tips) {
+
+    int star_multiplier = (blunt_tips ? 3 : 2);
+    int num_vertices_required = star_multiplier * num_star_tips;
+
+    int inner_radius_offset = 1;
+
+    float full_rotation = 2 * M_PI;
+
+    std::vector<glm::vec3> vertices;
+    float angle_step = full_rotation / num_vertices_required;
+
+    // make sure that a tip always faces directly up
+    float initial_angle = full_rotation / 4;
+
+    // align the flat part of the blunt tip so that it points vertically
+    if (blunt_tips) {
+        initial_angle -= angle_step / 2;
+    }
+
+    for (int i = 0; i < num_vertices_required; i++) {
+        float angle = initial_angle + i * angle_step;
+
+        float radius;
+        if ((i + inner_radius_offset) % star_multiplier == 0) {
+            radius = inner_radius;
+        } else {
+            radius = outer_radius;
+        }
+
+        float cos_angle = std::cos(angle);
+        float sin_angle = std::sin(angle);
+
+        vertices.emplace_back(center_x + radius * cos_angle, center_y + radius * sin_angle, 0.0f);
+    }
+
+    // the center vertex is required to form triangles and is stored at the very end.
+    vertices.emplace_back(center_x, center_y, 0);
+
+    return vertices;
+}
+
+std::vector<unsigned int> generate_star_indices(int num_star_tips, bool blunt_tips) {
+    std::vector<unsigned int> indices;
+
+    int star_multiplier = (blunt_tips ? 3 : 2);
+    int num_vertices = star_multiplier * num_star_tips;
+
+    for (int i = 0; i < num_vertices; ++i) {
+        int next = (i + 1) % num_vertices;
+        indices.push_back(i);
+        indices.push_back(next);
+        indices.push_back(num_vertices); // center index as specified in above function
+    }
+
+    return indices;
 }
 
 std::vector<glm::vec3> generate_fibonacci_sphere_vertices(int num_samples, float scale) {
