@@ -82,7 +82,7 @@ Grid::Grid(int rows, int cols, float width, float height, float origin_x, float 
 Grid::Grid(int rows, int cols, const Rectangle &rect)
     : Grid(rows, cols, rect.width, rect.height, rect.center.x, rect.center.y) {}
 
-// Get the rectangle at a specific row and column
+// TODO: probably swap the order here?
 Rectangle Grid::get_at(int col, int row) const {
 
     if (row < 0 || row >= rows || col < 0 || col >= cols) {
@@ -168,6 +168,22 @@ Rectangle create_rectangle_from_bottom_right(const glm::vec3 &bottom_right, floa
 
 Rectangle create_rectangle_from_center(const glm::vec3 &center, float width, float height) {
     return {center, width, height};
+}
+
+Rectangle expand_rectangle(const Rectangle &rect, float x_expand, float y_expand) {
+    Rectangle expanded_rect;
+    expanded_rect.center = rect.center;
+    expanded_rect.width = rect.width + 2 * x_expand;
+    expanded_rect.height = rect.height + 2 * y_expand;
+    return expanded_rect;
+}
+
+Rectangle shrink_rectangle(const Rectangle &rect, float x_shrink, float y_shrink) {
+    Rectangle shrunk_rect;
+    shrunk_rect.center = rect.center;
+    shrunk_rect.width = std::max(0.0f, rect.width - 2 * x_shrink);
+    shrunk_rect.height = std::max(0.0f, rect.height - 2 * y_shrink);
+    return shrunk_rect;
 }
 
 Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset) {
@@ -388,6 +404,9 @@ std::vector<glm::vec3> generate_square_vertices(float center_x, float center_y, 
 
 std::vector<unsigned int> generate_square_indices() { return generate_rectangle_indices(); }
 
+draw_info::IndexedVertexPositions generate_rectangle(float center_x, float center_y, float width, float height) {
+    return {generate_rectangle_indices(), generate_rectangle_vertices(center_x, center_y, width, height)};
+}
 std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_y, float width, float height) {
 
     float half_width = width / (float)2;
@@ -568,6 +587,26 @@ draw_info::IndexedVertexPositions generate_icosphere(int subdivisions, float rad
     return {indices, vertices};
 }
 
+void merge_ivps(draw_info::IndexedVertexPositions &base_ivp, const draw_info::IndexedVertexPositions &extend_ivp) {
+    unsigned int base_vertex_count = base_ivp.xyz_positions.size();
+
+    base_ivp.xyz_positions.insert(base_ivp.xyz_positions.end(), extend_ivp.xyz_positions.begin(),
+                                  extend_ivp.xyz_positions.end());
+
+    for (unsigned int index : extend_ivp.indices) {
+        base_ivp.indices.push_back(index + base_vertex_count);
+    }
+}
+
+void merge_ivps(draw_info::IndexedVertexPositions &base_ivp,
+                const std::vector<draw_info::IndexedVertexPositions> &extend_ivps) {
+    for (const auto &extend_ivp : extend_ivps) {
+        merge_ivps(base_ivp, extend_ivp);
+    }
+}
+
+// std::vector<unsigned int> flatten_and_increment_indices(const std::vector<std::vector<unsigned int>> &indices) {
+
 draw_info::IndexedVertexPositions generate_unit_cube() {
     return {generate_cube_indices(), generate_unit_cube_vertices()};
 }
@@ -675,6 +714,12 @@ std::vector<glm::vec3> generate_n_gon_flattened_vertices(int n) {
         n_gon_points.push_back(point);
     }
     return n_gon_points;
+}
+
+draw_info::IndexedVertexPositions generate_annulus(float center_x, float center_y, float outer_radius,
+                                                   float inner_radius, int num_segments) {
+    return {generate_annulus_indices(num_segments),
+            generate_annulus_vertices(center_x, center_y, outer_radius, inner_radius, num_segments)};
 }
 
 std::vector<glm::vec3> generate_annulus_vertices(float center_x, float center_y, float outer_radius, float inner_radius,

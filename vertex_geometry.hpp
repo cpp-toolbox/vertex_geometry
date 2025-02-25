@@ -23,6 +23,8 @@ class Rectangle {
     friend std::ostream &operator<<(std::ostream &os, const Rectangle &rect);
 };
 
+Rectangle expand_rectangle(const Rectangle &rect, float x_expand, float y_expand);
+Rectangle shrink_rectangle(const Rectangle &rect, float x_shrink, float y_shrink);
 Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset);
 Rectangle get_bounding_rectangle(const std::vector<Rectangle> &rectangles);
 
@@ -76,6 +78,10 @@ draw_info::IndexedVertexPositions generate_cone(int segments, float height, floa
 draw_info::IndexedVertexPositions generate_cylinder(int segments, float height, float radius);
 draw_info::IndexedVertexPositions generate_icosphere(int subdivisions, float radius);
 
+void merge_ivps(draw_info::IndexedVertexPositions &base_ivp, const draw_info::IndexedVertexPositions &extend_ivp);
+void merge_ivps(draw_info::IndexedVertexPositions &base_ivp,
+                const std::vector<draw_info::IndexedVertexPositions> &extend_ivps);
+
 draw_info::IndexedVertexPositions generate_unit_cube();
 std::vector<glm::vec3> generate_unit_cube_vertices();
 std::vector<unsigned int> generate_cube_indices();
@@ -83,6 +89,7 @@ std::vector<unsigned int> generate_cube_indices();
 std::vector<glm::vec3> generate_square_vertices(float center_x, float center_y, float side_length);
 std::vector<unsigned int> generate_square_indices();
 
+draw_info::IndexedVertexPositions generate_rectangle(float center_x, float center_y, float width, float height);
 std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_y, float width, float height);
 std::vector<unsigned int> generate_rectangle_indices();
 std::vector<glm::vec2> generate_rectangle_texture_coordinates();
@@ -98,6 +105,8 @@ void scale_vertices_in_place(std::vector<glm::vec3> &vertices, float scale_facto
 std::vector<glm::vec3> generate_n_gon_flattened_vertices(int n);
 int get_num_flattened_vertices_in_n_gon(int n);
 
+draw_info::IndexedVertexPositions generate_annulus(float center_x, float center_y, float outer_radius,
+                                                   float inner_radius, int num_segments);
 std::vector<glm::vec3> generate_annulus_vertices(float center_x, float center_y, float outer_radius, float inner_radius,
                                                  int num_segments);
 std::vector<unsigned int> generate_annulus_indices(int num_segments);
