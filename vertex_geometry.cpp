@@ -717,18 +717,22 @@ std::vector<glm::vec3> generate_n_gon_flattened_vertices(int n) {
 }
 
 draw_info::IndexedVertexPositions generate_annulus(float center_x, float center_y, float outer_radius,
-                                                   float inner_radius, int num_segments) {
-    return {generate_annulus_indices(num_segments),
-            generate_annulus_vertices(center_x, center_y, outer_radius, inner_radius, num_segments)};
+                                                   float inner_radius, int num_segments, float percent) {
+    return {generate_annulus_indices(num_segments, percent),
+            generate_annulus_vertices(center_x, center_y, outer_radius, inner_radius, num_segments, percent)};
 }
 
 std::vector<glm::vec3> generate_annulus_vertices(float center_x, float center_y, float outer_radius, float inner_radius,
-                                                 int num_segments) {
+                                                 int num_segments, float percent) {
     std::vector<glm::vec3> vertices;
-    float angle_step = 2.0f * M_PI / num_segments;
+    float full_circle = 2.0f * M_PI;
+    float angle_step = full_circle / num_segments;
+
+    num_segments *= percent;
 
     for (int i = 0; i < num_segments; ++i) {
         float angle = i * angle_step;
+
         float cos_angle = std::cos(angle);
         float sin_angle = std::sin(angle);
 
@@ -741,8 +745,10 @@ std::vector<glm::vec3> generate_annulus_vertices(float center_x, float center_y,
     return vertices;
 }
 
-std::vector<unsigned int> generate_annulus_indices(int num_segments) {
+std::vector<unsigned int> generate_annulus_indices(int num_segments, float percent) {
     std::vector<unsigned int> indices;
+
+    num_segments *= percent;
 
     for (int i = 0; i < num_segments; ++i) {
         int next = (i + 1) % num_segments;

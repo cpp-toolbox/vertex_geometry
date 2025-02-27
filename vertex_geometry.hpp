@@ -106,10 +106,10 @@ std::vector<glm::vec3> generate_n_gon_flattened_vertices(int n);
 int get_num_flattened_vertices_in_n_gon(int n);
 
 draw_info::IndexedVertexPositions generate_annulus(float center_x, float center_y, float outer_radius,
-                                                   float inner_radius, int num_segments);
+                                                   float inner_radius, int num_segments, float percent = 1);
 std::vector<glm::vec3> generate_annulus_vertices(float center_x, float center_y, float outer_radius, float inner_radius,
-                                                 int num_segments);
-std::vector<unsigned int> generate_annulus_indices(int num_segments);
+                                                 int num_segments, float percent = 1);
+std::vector<unsigned int> generate_annulus_indices(int num_segments, float percent = 1);
 
 // points are the points of the star
 std::vector<glm::vec3> generate_star_vertices(float center_x, float center_y, float outer_radius, float inner_radius,
