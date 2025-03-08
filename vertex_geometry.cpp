@@ -1,5 +1,6 @@
 #include "vertex_geometry.hpp"
 #include <cassert>
+#include <functional>
 #include <math.h>
 #include "glm/geometric.hpp"
 #include <algorithm>
@@ -587,6 +588,95 @@ draw_info::IndexedVertexPositions generate_icosphere(int subdivisions, float rad
     return {indices, vertices};
 }
 
+glm::vec3 f(double t) { return glm::vec3(std::cos(t), std::sin(t), t); }
+
+glm::vec3 compute_tangent_finite_difference(std::function<glm::vec3(double)> f, double t, double delta) {
+    glm::vec3 forward = f(t + delta);
+    glm::vec3 backward = f(t - delta);
+    return (forward - backward) / static_cast<float>(2.0f * delta); // central difference
+}
+
+std::vector<std::pair<glm::vec3, glm::vec3>> sample_points_and_tangents(std::function<glm::vec3(double)> f,
+                                                                        double t_start, double t_end, double step_size,
+                                                                        double finite_diff_delta) {
+    std::vector<std::pair<glm::vec3, glm::vec3>> samples;
+
+    for (double t = t_start; t <= t_end; t += step_size) {
+        glm::vec3 point = f(t);
+        glm::vec3 tangent = compute_tangent_finite_difference(f, t, finite_diff_delta);
+        samples.push_back({point, tangent});
+    }
+
+    return samples;
+}
+
+draw_info::IndexedVertexPositions generate_function_visualization(std::function<glm::vec3(double)> f, double t_start,
+                                                                  double t_end, double step_size,
+                                                                  double finite_diff_delta, float radius,
+                                                                  int segments) {
+    return generate_segmented_cylinder(sample_points_and_tangents(f, t_start, t_end, step_size, finite_diff_delta),
+                                       radius, segments);
+}
+
+draw_info::IndexedVertexPositions generate_segmented_cylinder(const std::vector<std::pair<glm::vec3, glm::vec3>> &path,
+                                                              float radius, int segments) {
+
+    std::vector<glm::vec3> vertices;
+    std::vector<unsigned int> indices;
+
+    if (path.size() < 2)
+        return {indices, vertices};
+
+    unsigned int vertex_offset = 0;
+
+    for (size_t i = 0; i < path.size() - 1; ++i) {
+        glm::vec3 p0 = path[i].first;
+        glm::vec3 p1 = path[i + 1].first;
+        glm::vec3 tangent = glm::normalize(p1 - p0);
+
+        float angle_increment = 2.0f * M_PI / segments;
+
+        // Generate an arbitrary perpendicular vector using Gram-Schmidt
+        glm::vec3 arbitrary = (std::abs(tangent.x) > 0.9f) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0);
+        glm::vec3 normal = glm::normalize(glm::cross(tangent, arbitrary));
+        glm::vec3 binormal = glm::normalize(glm::cross(tangent, normal));
+
+        std::vector<unsigned int> segment_indices;
+
+        for (int j = 0; j < segments; ++j) {
+            float angle = j * angle_increment;
+            glm::vec3 offset = radius * (cos(angle) * normal + sin(angle) * binormal);
+
+            vertices.push_back(p0 + offset);
+            vertices.push_back(p1 + offset);
+
+            if (j > 0) {
+                // Form two triangles per segment
+                indices.push_back(vertex_offset + 2 * (j - 1));
+                indices.push_back(vertex_offset + 2 * j);
+                indices.push_back(vertex_offset + 2 * (j - 1) + 1);
+
+                indices.push_back(vertex_offset + 2 * (j - 1) + 1);
+                indices.push_back(vertex_offset + 2 * j);
+                indices.push_back(vertex_offset + 2 * j + 1);
+            }
+        }
+
+        // Close the ring
+        indices.push_back(vertex_offset + 2 * (segments - 1));
+        indices.push_back(vertex_offset);
+        indices.push_back(vertex_offset + 2 * (segments - 1) + 1);
+
+        indices.push_back(vertex_offset + 2 * (segments - 1) + 1);
+        indices.push_back(vertex_offset);
+        indices.push_back(vertex_offset + 1);
+
+        vertex_offset += 2 * segments;
+    }
+
+    return {indices, vertices};
+}
+
 void merge_ivps(draw_info::IndexedVertexPositions &base_ivp, const draw_info::IndexedVertexPositions &extend_ivp) {
     unsigned int base_vertex_count = base_ivp.xyz_positions.size();
 
@@ -935,6 +1025,24 @@ void scale_vertices_in_place(std::vector<glm::vec3> &vertices, float scale_facto
 void translate_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &translation) {
     for (auto &vertex : vertices) {
         vertex += translation;
+    }
+}
+
+glm::mat4 yaw_pitch_roll(float yaw, float pitch, float roll) { // rads
+    float cy = cos(yaw), sy = sin(yaw);
+    float cp = cos(pitch), sp = sin(pitch);
+    float cr = cos(roll), sr = sin(roll);
+
+    return glm::mat4(cy * cr + sy * sp * sr, sr * cp, sy * cr - cy * sp * sr, 0.0f, -cy * sr + sy * sp * cr, cr * cp,
+                     -sy * sr - cy * sp * cr, 0.0f, sy * cp, -sp, cy * cp, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+}
+
+void rotate_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &rotation_turns) {
+    glm::vec3 rotation_radians = rotation_turns * glm::two_pi<float>(); // Convert turns to radians
+    glm::mat4 rotation_matrix = yaw_pitch_roll(rotation_radians.y, rotation_radians.x, rotation_radians.z);
+
+    for (auto &vertex : vertices) {
+        vertex = glm::vec3(rotation_matrix * glm::vec4(vertex, 1.0f));
     }
 }
 

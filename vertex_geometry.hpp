@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <cmath>
+#include <functional>
 #include <stdexcept>
 #include "sbpt_generated_includes.hpp"
 
@@ -78,6 +79,14 @@ draw_info::IndexedVertexPositions generate_cone(int segments, float height, floa
 draw_info::IndexedVertexPositions generate_cylinder(int segments, float height, float radius);
 draw_info::IndexedVertexPositions generate_icosphere(int subdivisions, float radius);
 
+draw_info::IndexedVertexPositions generate_function_visualization(std::function<glm::vec3(double)> f, double t_start,
+                                                                  double t_end, double step_size,
+                                                                  double finite_diff_delta, float radius = .25,
+                                                                  int segments = 8);
+
+draw_info::IndexedVertexPositions generate_segmented_cylinder(const std::vector<std::pair<glm::vec3, glm::vec3>> &path,
+                                                              float radius, int segments);
+
 void merge_ivps(draw_info::IndexedVertexPositions &base_ivp, const draw_info::IndexedVertexPositions &extend_ivp);
 void merge_ivps(draw_info::IndexedVertexPositions &base_ivp,
                 const std::vector<draw_info::IndexedVertexPositions> &extend_ivps);
@@ -101,6 +110,7 @@ std::vector<glm::vec3> generate_arrow_vertices(glm::vec2 start, glm::vec2 end, f
 std::vector<unsigned int> generate_arrow_indices();
 
 void scale_vertices_in_place(std::vector<glm::vec3> &vertices, float scale_factor);
+void rotate_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &rotation_turns);
 
 std::vector<glm::vec3> generate_n_gon_flattened_vertices(int n);
 int get_num_flattened_vertices_in_n_gon(int n);
