@@ -87,6 +87,8 @@ draw_info::IndexedVertexPositions generate_function_visualization(std::function<
 draw_info::IndexedVertexPositions generate_segmented_cylinder(const std::vector<std::pair<glm::vec3, glm::vec3>> &path,
                                                               float radius, int segments);
 
+draw_info::IndexedVertexPositions generate_quad_strip(const std::vector<std::pair<glm::vec3, glm::vec3>> &lines);
+
 void merge_ivps(draw_info::IndexedVertexPositions &base_ivp, const draw_info::IndexedVertexPositions &extend_ivp);
 void merge_ivps(draw_info::IndexedVertexPositions &base_ivp,
                 const std::vector<draw_info::IndexedVertexPositions> &extend_ivps);

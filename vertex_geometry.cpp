@@ -677,6 +677,43 @@ draw_info::IndexedVertexPositions generate_segmented_cylinder(const std::vector<
     return {indices, vertices};
 }
 
+// think about lines as rungs of a ladder missing its sides, this function fills it all in with quads
+draw_info::IndexedVertexPositions generate_quad_strip(const std::vector<std::pair<glm::vec3, glm::vec3>> &lines) {
+    std::vector<glm::vec3> vertices;
+    std::vector<unsigned int> indices;
+
+    if (lines.size() < 2)
+        return {indices, vertices};
+
+    unsigned int vertex_offset = 0;
+
+    for (size_t i = 0; i < lines.size() - 1; ++i) {
+        glm::vec3 p0a = lines[i].first;
+        glm::vec3 p0b = lines[i].second;
+        glm::vec3 p1a = lines[i + 1].first;
+        glm::vec3 p1b = lines[i + 1].second;
+
+        // Add vertices
+        vertices.push_back(p0a);
+        vertices.push_back(p0b);
+        vertices.push_back(p1a);
+        vertices.push_back(p1b);
+
+        // Create two triangles to form a quad
+        indices.push_back(vertex_offset);
+        indices.push_back(vertex_offset + 2);
+        indices.push_back(vertex_offset + 1);
+
+        indices.push_back(vertex_offset + 1);
+        indices.push_back(vertex_offset + 2);
+        indices.push_back(vertex_offset + 3);
+
+        vertex_offset += 4;
+    }
+
+    return {indices, vertices};
+}
+
 void merge_ivps(draw_info::IndexedVertexPositions &base_ivp, const draw_info::IndexedVertexPositions &extend_ivp) {
     unsigned int base_vertex_count = base_ivp.xyz_positions.size();
 
