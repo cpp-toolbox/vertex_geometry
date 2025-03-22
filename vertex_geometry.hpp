@@ -92,6 +92,7 @@ draw_info::IndexedVertexPositions generate_quad_strip(const std::vector<std::pai
 void merge_ivps(draw_info::IndexedVertexPositions &base_ivp, const draw_info::IndexedVertexPositions &extend_ivp);
 void merge_ivps(draw_info::IndexedVertexPositions &base_ivp,
                 const std::vector<draw_info::IndexedVertexPositions> &extend_ivps);
+draw_info::IndexedVertexPositions merge_ivps(const std::vector<draw_info::IndexedVertexPositions> &ivps);
 
 draw_info::IndexedVertexPositions generate_unit_cube();
 std::vector<glm::vec3> generate_unit_cube_vertices();
@@ -111,6 +112,7 @@ std::vector<glm::vec3> generate_rectangle_vertices_3d(const glm::vec3 &center, c
 std::vector<glm::vec3> generate_arrow_vertices(glm::vec2 start, glm::vec2 end, float stem_thickness, float tip_length);
 std::vector<unsigned int> generate_arrow_indices();
 
+void scale_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &scale_vector);
 void scale_vertices_in_place(std::vector<glm::vec3> &vertices, float scale_factor);
 void rotate_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &rotation_turns);
 

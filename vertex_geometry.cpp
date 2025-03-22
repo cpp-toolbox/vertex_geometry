@@ -732,6 +732,16 @@ void merge_ivps(draw_info::IndexedVertexPositions &base_ivp,
     }
 }
 
+draw_info::IndexedVertexPositions merge_ivps(const std::vector<draw_info::IndexedVertexPositions> &ivps) {
+    draw_info::IndexedVertexPositions merged_ivp;
+
+    for (const auto &ivp : ivps) {
+        merge_ivps(merged_ivp, ivp);
+    }
+
+    return merged_ivp;
+}
+
 // std::vector<unsigned int> flatten_and_increment_indices(const std::vector<std::vector<unsigned int>> &indices) {
 
 draw_info::IndexedVertexPositions generate_unit_cube() {
@@ -1052,7 +1062,12 @@ std::vector<glm::vec3> generate_arrow_vertices(glm::vec2 start, glm::vec2 end, f
 
 std::vector<unsigned int> generate_arrow_indices() { return {0, 1, 2, 2, 1, 3, 4, 5, 6}; }
 
-// Function to scale vertices
+void scale_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &scale_vector) {
+    for (auto &vertex : vertices) {
+        vertex *= scale_vector;
+    }
+}
+
 void scale_vertices_in_place(std::vector<glm::vec3> &vertices, float scale_factor) {
     for (auto &vertex : vertices) {
         vertex *= scale_factor;
