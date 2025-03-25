@@ -1062,10 +1062,18 @@ std::vector<glm::vec3> generate_arrow_vertices(glm::vec2 start, glm::vec2 end, f
 
 std::vector<unsigned int> generate_arrow_indices() { return {0, 1, 2, 2, 1, 3, 4, 5, 6}; }
 
-void scale_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &scale_vector) {
+void scale_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &scale_vector, const glm::vec3 &origin) {
     for (auto &vertex : vertices) {
-        vertex *= scale_vector;
+        vertex = origin + (vertex - origin) * scale_vector;
     }
+}
+
+std::vector<glm::vec3> scale_vertices(const std::vector<glm::vec3> &vertices, const glm::vec3 &scale_vector, const glm::vec3 &origin) {
+    std::vector<glm::vec3> scaled_vertices = vertices;
+    for (auto &vertex : scaled_vertices) {
+        vertex = origin + (vertex - origin) * scale_vector;
+    }
+    return scaled_vertices;
 }
 
 void scale_vertices_in_place(std::vector<glm::vec3> &vertices, float scale_factor) {

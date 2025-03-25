@@ -112,7 +112,10 @@ std::vector<glm::vec3> generate_rectangle_vertices_3d(const glm::vec3 &center, c
 std::vector<glm::vec3> generate_arrow_vertices(glm::vec2 start, glm::vec2 end, float stem_thickness, float tip_length);
 std::vector<unsigned int> generate_arrow_indices();
 
-void scale_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &scale_vector);
+
+
+std::vector<glm::vec3> scale_vertices(const std::vector<glm::vec3> &vertices, const glm::vec3 &scale_vector, const glm::vec3 &origin = glm::vec3(0.0f));
+void scale_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &scale_vector, const glm::vec3 &origin = glm::vec3(0.0f));
 void scale_vertices_in_place(std::vector<glm::vec3> &vertices, float scale_factor);
 void rotate_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &rotation_turns);
 
