@@ -803,6 +803,49 @@ std::vector<glm::vec3> generate_rectangle_vertices_3d(const glm::vec3 &center, c
     };
 }
 
+// NOTE: the surface normal is not unique here, this is because we are already constrained by a, b thus
+/*
+ *                 SN                  SN2
+ *                  \                 /
+ *                   \               /
+ *                    \             /                    --- B
+ *                     \           /                 ---/
+ *  SN1                 \         /               ---/
+ *   ---\                \       /            ---/
+ *       -----\           \     /          ---/
+ *             -----\      \   /       ---/
+ *                   -----\ \ /     ---/
+ *                           . ----/
+ *                         ---/--\
+ *                     ---/       ---\
+ *                 ---/               ---\
+ *             ---/                       ---\
+ *         ---/                               ---\
+ *     ---/                                       --- width_dir
+ *  --/
+ * A
+ *
+ * given the direction vector B - A, then note that there are a family of surface normals yielding the same width dir,
+ * note that the surface normal and B - A define a plane that passes through both lines, and any vector such as SN1 or
+ * SN2 also will create width_dir with the cross product is used, this we don't require that the surface normal be
+ * actually perpendicular to B - A
+ *
+ *
+ */
+std::vector<glm::vec3> generate_rectangle_vertices_from_points(const glm::vec3 &point_a, const glm::vec3 &point_b,
+                                                               const glm::vec3 &surface_normal, float height) {
+    glm::vec3 width_dir = glm::normalize(point_b - point_a);
+    glm::vec3 height_dir = glm::normalize(glm::cross(surface_normal, width_dir));
+    glm::vec3 half_height_vec = (height / 2.0f) * height_dir;
+
+    return {
+        point_a + half_height_vec, // top left
+        point_a - half_height_vec, // bottom left
+        point_b - half_height_vec, // bottom right
+        point_b + half_height_vec  // top right
+    };
+}
+
 std::vector<unsigned int> generate_rectangle_indices() {
     return {
         // note that we start from 0!
@@ -1068,7 +1111,8 @@ void scale_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &
     }
 }
 
-std::vector<glm::vec3> scale_vertices(const std::vector<glm::vec3> &vertices, const glm::vec3 &scale_vector, const glm::vec3 &origin) {
+std::vector<glm::vec3> scale_vertices(const std::vector<glm::vec3> &vertices, const glm::vec3 &scale_vector,
+                                      const glm::vec3 &origin) {
     std::vector<glm::vec3> scaled_vertices = vertices;
     for (auto &vertex : scaled_vertices) {
         vertex = origin + (vertex - origin) * scale_vector;
