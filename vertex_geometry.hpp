@@ -6,6 +6,7 @@
 #include <cmath>
 #include <functional>
 #include <stdexcept>
+
 #include "sbpt_generated_includes.hpp"
 
 namespace vertex_geometry {
@@ -76,7 +77,15 @@ IndexedVertices generate_grid(const glm::vec3 &center_position, float width, flo
 std::vector<unsigned int> flatten_and_increment_indices(const std::vector<std::vector<unsigned int>> &indices);
 
 draw_info::IndexedVertexPositions generate_cone(int segments, float height, float radius);
+
+draw_info::IndexedVertexPositions generate_cone_between(const glm::vec3 &base, const glm::vec3 &tip, int segments,
+                                                        float radius);
+
 draw_info::IndexedVertexPositions generate_cylinder(int segments, float height, float radius);
+
+draw_info::IndexedVertexPositions generate_cylinder_between(const glm::vec3 &p1, const glm::vec3 &p2, int segments,
+                                                            float radius);
+
 draw_info::IndexedVertexPositions generate_icosphere(int subdivisions, float radius);
 
 draw_info::IndexedVertexPositions generate_function_visualization(std::function<glm::vec3(double)> f, double t_start,
@@ -109,8 +118,14 @@ std::vector<glm::vec2> generate_rectangle_texture_coordinates();
 std::vector<glm::vec3> generate_rectangle_vertices_3d(const glm::vec3 &center, const glm::vec3 &width_dir,
                                                       const glm::vec3 &height_dir, float width, float height);
 std::vector<glm::vec3> generate_rectangle_vertices_from_points(const glm::vec3 &point_a, const glm::vec3 &point_b,
-                                                               const glm::vec3 &surface_normal,
-                                                               float height = 1);
+                                                               const glm::vec3 &surface_normal, float height = 1);
+
+draw_info::IndexedVertexPositions generate_3d_arrow_with_ratio(const glm::vec3 &start, const glm::vec3 &end,
+                                                               int num_segments = 16,
+                                                               float length_thickness_ratio = 0.07);
+
+draw_info::IndexedVertexPositions generate_3d_arrow(const glm::vec3 &start, const glm::vec3 &end, int num_segments = 16,
+                                                    float stem_thickness = 0.12);
 
 std::vector<glm::vec3> generate_arrow_vertices(glm::vec2 start, glm::vec2 end, float stem_thickness, float tip_length);
 std::vector<unsigned int> generate_arrow_indices();

@@ -422,6 +422,50 @@ std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_
     };
 }
 
+draw_info::IndexedVertexPositions generate_cone_between(const glm::vec3 &base, const glm::vec3 &tip, int segments,
+                                                        float radius) {
+    std::vector<glm::vec3> vertices;
+    std::vector<unsigned int> indices;
+
+    // compute the axis vector and length
+    glm::vec3 axis = tip - base;
+    float height = glm::length(axis);
+    glm::vec3 dir = glm::normalize(axis);
+
+    // find a perpendicular vector to construct the base circle
+    glm::vec3 up = (fabs(dir.y) < 0.99f) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0);
+    glm::vec3 tangent = glm::normalize(glm::cross(dir, up));
+    glm::vec3 bitangent = glm::cross(dir, tangent);
+
+    // tip and base center
+    vertices.push_back(tip);  // tip vertex
+    vertices.push_back(base); // base center vertex
+
+    // generate base circle vertices
+    float angle_increment = 2.0f * M_PI / segments;
+    for (int i = 0; i < segments; ++i) {
+        float angle = i * angle_increment;
+        glm::vec3 offset = radius * (cos(angle) * tangent + sin(angle) * bitangent);
+        vertices.push_back(base + offset);
+    }
+
+    // generate indices for the base (fan)
+    for (int i = 0; i < segments; ++i) {
+        indices.push_back(1); // base center
+        indices.push_back(2 + ((i + 1) % segments));
+        indices.push_back(2 + i);
+    }
+
+    // generate indices for the side faces
+    for (int i = 0; i < segments; ++i) {
+        indices.push_back(0); // tip
+        indices.push_back(2 + i);
+        indices.push_back(2 + ((i + 1) % segments));
+    }
+
+    return {indices, vertices};
+}
+
 draw_info::IndexedVertexPositions generate_cone(int segments, float height, float radius) {
     std::vector<glm::vec3> vertices;
     std::vector<unsigned int> indices;
@@ -429,13 +473,13 @@ draw_info::IndexedVertexPositions generate_cone(int segments, float height, floa
     float half_height = height / 2.0f;
     float angle_increment = 2.0f * M_PI / segments;
 
-    // Top vertex (apex of the cone)
+    // top vertex (apex of the cone)
     vertices.push_back(glm::vec3(0.0f, half_height, 0.0f));
 
-    // Bottom center vertex
+    // bottom center vertex
     vertices.push_back(glm::vec3(0.0f, -half_height, 0.0f));
 
-    // Generate vertices for the bottom circle
+    // generate vertices for the bottom circle
     for (int i = 0; i < segments; ++i) {
         float angle = i * angle_increment;
         float x = radius * cos(angle);
@@ -443,18 +487,83 @@ draw_info::IndexedVertexPositions generate_cone(int segments, float height, floa
         vertices.push_back(glm::vec3(x, -half_height, z));
     }
 
-    // Generate indices for the bottom face (fan)
+    // generate indices for the bottom face (fan)
     for (int i = 0; i < segments; ++i) {
         indices.push_back(1); // Bottom center vertex
         indices.push_back(2 + i);
         indices.push_back(2 + ((i + 1) % segments));
     }
 
-    // Generate indices for the side faces
+    // generate indices for the side faces
     for (int i = 0; i < segments; ++i) {
         indices.push_back(0); // Apex of the cone
         indices.push_back(2 + ((i + 1) % segments));
         indices.push_back(2 + i);
+    }
+
+    return {indices, vertices};
+}
+
+draw_info::IndexedVertexPositions generate_cylinder_between(const glm::vec3 &p1, const glm::vec3 &p2, int segments,
+                                                            float radius) {
+    std::vector<glm::vec3> vertices;
+    std::vector<unsigned int> indices;
+
+    glm::vec3 axis = p2 - p1;
+    float height = glm::length(axis);
+    glm::vec3 up = glm::normalize(axis);
+
+    // create an arbitrary perpendicular vector
+    glm::vec3 ortho = glm::cross(up, glm::vec3(1.0f, 0.0f, 0.0f));
+    if (glm::length(ortho) < 1e-6f) {
+        ortho = glm::cross(up, glm::vec3(0.0f, 1.0f, 0.0f));
+    }
+    ortho = glm::normalize(ortho);
+    glm::vec3 tangent = glm::cross(up, ortho);
+
+    float angle_increment = 2.0f * M_PI / segments;
+
+    // top and bottom center vertices
+    vertices.push_back(p2); // top center
+    vertices.push_back(p1); // bottom center
+
+    // generate vertices for top and bottom circles
+    for (int i = 0; i < segments; ++i) {
+        float angle = i * angle_increment;
+        glm::vec3 offset = radius * (cos(angle) * ortho + sin(angle) * tangent);
+
+        vertices.push_back(p2 + offset); // top circle vertex
+        vertices.push_back(p1 + offset); // bottom circle vertex
+    }
+
+    // generate indices for the top face
+    for (int i = 0; i < segments; ++i) {
+        indices.push_back(0);
+        indices.push_back(2 + i * 2);
+        indices.push_back(2 + ((i * 2 + 2) % (segments * 2)));
+    }
+
+    // generate indices for the bottom face
+    for (int i = 0; i < segments; ++i) {
+        indices.push_back(1);
+        indices.push_back(3 + ((i * 2) % (segments * 2)));
+        indices.push_back(3 + ((i * 2 + 2) % (segments * 2)));
+    }
+
+    // generate indices for the side faces
+    for (int i = 0; i < segments; ++i) {
+        int top1 = 2 + (i * 2);
+        int bottom1 = 3 + (i * 2);
+        int top2 = 2 + ((i * 2 + 2) % (segments * 2));
+        int bottom2 = 3 + ((i * 2 + 2) % (segments * 2));
+
+        indices.push_back(top1);
+        indices.push_back(bottom1);
+        indices.push_back(top2);
+
+        indices.push_back(top2);
+        indices.push_back(bottom1);
+        indices.push_back(bottom2);
     }
 
     return {indices, vertices};
@@ -1021,6 +1130,40 @@ std::vector<glm::vec3> generate_fibonacci_sphere_vertices(int num_samples, float
     }
 
     return points;
+}
+
+draw_info::IndexedVertexPositions generate_3d_arrow_with_ratio(const glm::vec3 &start, const glm::vec3 &end,
+                                                               int num_segments, float length_thickness_ratio) {
+    glm::vec3 direction = end - start;
+    float length = glm::length(direction);
+
+    // calculate the stem thickness (height) using the width-to-height ratio
+    float stem_thickness = length * length_thickness_ratio;
+
+    return generate_3d_arrow(start, end, num_segments, stem_thickness);
+}
+
+draw_info::IndexedVertexPositions generate_3d_arrow(const glm::vec3 &start, const glm::vec3 &end, int num_segments,
+                                                    float stem_thickness) {
+
+    glm::vec3 direction = end - start;
+
+    float length = glm::length(direction);
+
+    // compute the tip length as 10% of the direction vector
+    float tip_length = 0.3f * length;
+    float stem_length = length - tip_length;
+
+    // generate the stem and tip using the new functions
+    auto stem = vertex_geometry::generate_cylinder_between(
+        start, start + direction - glm::normalize(direction) * tip_length, num_segments, stem_thickness);
+
+    auto tip = vertex_geometry::generate_cone_between(start + direction - glm::normalize(direction) * tip_length, end,
+                                                      num_segments, 2 * stem_thickness);
+
+    vertex_geometry::merge_ivps(stem, tip);
+
+    return stem;
 }
 
 /**
