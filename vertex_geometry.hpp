@@ -18,6 +18,8 @@ struct IndexedVertices {
 
 class Rectangle {
   public:
+    Rectangle(glm::vec3 center = glm::vec3(0), float width = 1, float height = 1)
+        : center(center), width(width), height(height) {}
     glm::vec3 center; // Center position
     float width;      // Width of the rectangle
     float height;     // Height of the rectangle
