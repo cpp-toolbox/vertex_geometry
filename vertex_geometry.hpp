@@ -145,7 +145,8 @@ draw_info::IndexedVertexPositions generate_3d_arrow_with_ratio(const glm::vec3 &
 draw_info::IndexedVertexPositions generate_3d_arrow(const glm::vec3 &start, const glm::vec3 &end, int num_segments = 16,
                                                     float stem_thickness = 0.12);
 
-std::vector<glm::vec3> generate_arrow_vertices(glm::vec2 start, glm::vec2 end, float stem_thickness, float tip_length);
+std::vector<glm::vec3> generate_arrow_vertices(glm::vec2 start, glm::vec2 end, float stem_thickness = 0.05,
+                                               float tip_length = .05);
 std::vector<unsigned int> generate_arrow_indices();
 
 std::vector<glm::vec3> scale_vertices(const std::vector<glm::vec3> &vertices, const glm::vec3 &scale_vector,
