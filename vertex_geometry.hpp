@@ -18,7 +18,8 @@ struct IndexedVertices {
 
 class Rectangle {
   public:
-    Rectangle(glm::vec3 center = glm::vec3(0), float width = 1, float height = 1)
+    // by default we use width height 2 to take up the full [-1, 1] x [-1, 1] ndc space
+    Rectangle(glm::vec3 center = glm::vec3(0), float width = 2, float height = 2)
         : center(center), width(width), height(height) {}
     glm::vec3 center; // Center position
     float width;      // Width of the rectangle
@@ -32,12 +33,27 @@ Rectangle shrink_rectangle(const Rectangle &rect, float x_shrink, float y_shrink
 Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset);
 Rectangle get_bounding_rectangle(const std::vector<Rectangle> &rectangles);
 
+/*
+ *       |
+ *       |
+ *       |
+ *       |
+ *       |
+ *       |
+ *       |
+ *       |
+ *       |
+ *       |
+ */
+
 class Grid {
   public:
     Grid(int rows, int cols, float width = 2.0f, float height = 2.0f, float origin_x = 0.0f, float origin_y = 0.0f);
     Grid(int rows, int cols, const Rectangle &rect);
 
+    // this is like x, y
     Rectangle get_at(int col, int row) const;
+    std::vector<Rectangle> get_selection(float x0, float y0, float x1, float y1) const;
     std::vector<Rectangle> get_rectangles_in_bounding_box(int row1, int col1, int row2, int col2) const;
     std::vector<Rectangle> get_row(int row) const;
     std::vector<Rectangle> get_column(int col) const;

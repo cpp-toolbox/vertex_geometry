@@ -99,6 +99,33 @@ Rectangle Grid::get_at(int col, int row) const {
     return Rectangle{center, rect_width, rect_height};
 }
 
+std::vector<Rectangle> Grid::get_selection(float x0, float y0, float x1, float y1) const {
+    // Normalize the coordinates (x0, y0) should be bottom-left, (x1, y1) top-right
+    float min_x = std::min(x0, x1);
+    float max_x = std::max(x0, x1);
+    float min_y = std::min(y0, y1);
+    float max_y = std::max(y0, y1);
+
+    // Calculate the bounding columns and rows
+    int start_col = static_cast<int>(std::floor((min_x - (origin_x - grid_width / 2)) / rect_width));
+    int end_col = static_cast<int>(std::floor((max_x - (origin_x - grid_width / 2)) / rect_width));
+
+    int start_row = static_cast<int>(std::floor(((origin_y + grid_height / 2) - max_y) / rect_height));
+    int end_row = static_cast<int>(std::floor(((origin_y + grid_height / 2) - min_y) / rect_height));
+
+    std::vector<Rectangle> selected;
+
+    for (int row = start_row; row <= end_row; ++row) {
+        for (int col = start_col; col <= end_col; ++col) {
+            if (row >= 0 && row < rows && col >= 0 && col < cols) {
+                selected.push_back(get_at(col, row));
+            }
+        }
+    }
+
+    return selected;
+}
+
 std::vector<Rectangle> Grid::get_rectangles_in_bounding_box(int row1, int col1, int row2, int col2) const {
     if (row1 < 0 || row1 >= rows || row2 < 0 || row2 >= rows || col1 < 0 || col1 >= cols || col2 < 0 || col2 >= cols) {
         throw std::out_of_range("Row or column indices are out of bounds");
