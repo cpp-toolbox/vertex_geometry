@@ -74,6 +74,15 @@ IndexedVertices Rectangle::get_ivs() const {
                            generate_rectangle_indices());
 }
 
+glm::vec3 Rectangle::get_top_left() const { return center + glm::vec3(-width / 2.0f, height / 2.0f, 0.0f); }
+glm::vec3 Rectangle::get_top_center() const { return center + glm::vec3(0.0f, height / 2.0f, 0.0f); }
+glm::vec3 Rectangle::get_top_right() const { return center + glm::vec3(width / 2.0f, height / 2.0f, 0.0f); }
+glm::vec3 Rectangle::get_center_left() const { return center + glm::vec3(-width / 2.0f, 0.0f, 0.0f); }
+glm::vec3 Rectangle::get_center_right() const { return center + glm::vec3(width / 2.0f, 0.0f, 0.0f); }
+glm::vec3 Rectangle::get_bottom_left() const { return center + glm::vec3(-width / 2.0f, -height / 2.0f, 0.0f); }
+glm::vec3 Rectangle::get_bottom_center() const { return center + glm::vec3(0.0f, -height / 2.0f, 0.0f); }
+glm::vec3 Rectangle::get_bottom_right() const { return center + glm::vec3(width / 2.0f, -height / 2.0f, 0.0f); }
+
 // Constructor with explicit dimensions and origin
 Grid::Grid(int rows, int cols, float width, float height, float origin_x, float origin_y)
     : rows(rows), cols(cols), grid_width(width), grid_height(height), origin_x(origin_x), origin_y(origin_y),
@@ -194,6 +203,10 @@ Rectangle create_rectangle_from_bottom_right(const glm::vec3 &bottom_right, floa
     return {bottom_right + glm::vec3(-width / 2.0f, height / 2.0f, 0.0f), width, height};
 }
 
+Rectangle create_rectangle_from_center_left(const glm::vec3 &center_left, float width, float height) {
+    return {center_left + glm::vec3(width / 2.0f, 0.0f, 0.0f), width, height};
+}
+
 Rectangle create_rectangle_from_center(const glm::vec3 &center, float width, float height) {
     return {center, width, height};
 }
@@ -212,6 +225,10 @@ Rectangle shrink_rectangle(const Rectangle &rect, float x_shrink, float y_shrink
     shrunk_rect.width = std::max(0.0f, rect.width - 2 * x_shrink);
     shrunk_rect.height = std::max(0.0f, rect.height - 2 * y_shrink);
     return shrunk_rect;
+}
+
+Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float x_shrink, float y_shrink) {
+    return create_rectangle_from_center_left(rect.get_center_left(), rect.width * x_shrink, rect.height * y_shrink);
 }
 
 Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset) {

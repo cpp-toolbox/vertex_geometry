@@ -26,10 +26,21 @@ class Rectangle {
     float height;     // Height of the rectangle
     IndexedVertices get_ivs() const;
     friend std::ostream &operator<<(std::ostream &os, const Rectangle &rect);
+
+    glm::vec3 get_top_left() const;
+    glm::vec3 get_top_center() const;
+    glm::vec3 get_top_right() const;
+    glm::vec3 get_center_left() const;
+    glm::vec3 get_center_right() const;
+    glm::vec3 get_bottom_left() const;
+    glm::vec3 get_bottom_center() const;
+    glm::vec3 get_bottom_right() const;
 };
 
 Rectangle expand_rectangle(const Rectangle &rect, float x_expand, float y_expand);
 Rectangle shrink_rectangle(const Rectangle &rect, float x_shrink, float y_shrink);
+// this function scales a rectangle keeping the left side in place
+Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float x_shrink, float y_shrink = 1);
 Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset);
 Rectangle get_bounding_rectangle(const std::vector<Rectangle> &rectangles);
 
@@ -77,6 +88,8 @@ Rectangle create_rectangle_from_top_left(const glm::vec3 &top_left, float width,
 Rectangle create_rectangle_from_top_right(const glm::vec3 &top_right, float width, float height);
 Rectangle create_rectangle_from_bottom_left(const glm::vec3 &bottom_left, float width, float height);
 Rectangle create_rectangle_from_bottom_right(const glm::vec3 &bottom_right, float width, float height);
+Rectangle create_rectangle_from_center_left(const glm::vec3 &center_left, float width, float height);
+
 Rectangle create_rectangle_from_center(const glm::vec3 &center, float width, float height);
 
 std::vector<Rectangle> weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights,
