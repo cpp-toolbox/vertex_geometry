@@ -59,7 +59,8 @@ Rectangle get_bounding_rectangle(const std::vector<Rectangle> &rectangles);
 
 class Grid {
   public:
-    Grid(int rows, int cols, float width = 2.0f, float height = 2.0f, float origin_x = 0.0f, float origin_y = 0.0f);
+    Grid(int rows, int cols, float width = 2.0f, float height = 2.0f, float origin_x = 0.0f, float origin_y = 0.0f,
+         float origin_z = 0.0f);
     Grid(int rows, int cols, const Rectangle &rect);
 
     // this is like x, y
@@ -77,6 +78,7 @@ class Grid {
     float grid_height; // Total height of the grid in NDC
     float origin_x;    // X-coordinate of the grid's origin
     float origin_y;    // Y-coordinate of the grid's origin
+    float origin_z;    // Y-coordinate of the grid's origin
     float rect_width;  // Width of each rectangle
     float rect_height; // Height of each rectangle
 };
@@ -143,6 +145,9 @@ std::vector<unsigned int> generate_square_indices();
 
 draw_info::IndexedVertexPositions generate_rectangle(float center_x, float center_y, float width, float height);
 std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_y, float width, float height);
+// TODO: the below shouldn't exist, instead the above should just take in z, but i don't want to bust the api right now
+std::vector<glm::vec3> generate_rectangle_vertices_with_z(float center_x, float center_y, float center_z, float width,
+                                                          float height);
 std::vector<unsigned int> generate_rectangle_indices();
 std::vector<glm::vec2> generate_rectangle_texture_coordinates();
 

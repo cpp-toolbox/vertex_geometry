@@ -70,8 +70,9 @@ Rectangle create_rectangle_from_corners(const glm::vec3 top_left, const glm::vec
 }
 
 IndexedVertices Rectangle::get_ivs() const {
-    return IndexedVertices(generate_rectangle_vertices(this->center.x, this->center.y, this->width, this->height),
-                           generate_rectangle_indices());
+    return IndexedVertices(
+        generate_rectangle_vertices_with_z(this->center.x, this->center.y, this->center.z, this->width, this->height),
+        generate_rectangle_indices());
 }
 
 glm::vec3 Rectangle::get_top_left() const { return center + glm::vec3(-width / 2.0f, height / 2.0f, 0.0f); }
@@ -84,13 +85,13 @@ glm::vec3 Rectangle::get_bottom_center() const { return center + glm::vec3(0.0f,
 glm::vec3 Rectangle::get_bottom_right() const { return center + glm::vec3(width / 2.0f, -height / 2.0f, 0.0f); }
 
 // Constructor with explicit dimensions and origin
-Grid::Grid(int rows, int cols, float width, float height, float origin_x, float origin_y)
+Grid::Grid(int rows, int cols, float width, float height, float origin_x, float origin_y, float origin_z)
     : rows(rows), cols(cols), grid_width(width), grid_height(height), origin_x(origin_x), origin_y(origin_y),
-      rect_width(width / cols), rect_height(height / rows) {}
+      origin_z(origin_z), rect_width(width / cols), rect_height(height / rows) {}
 
 // Constructor using a Rectangle
 Grid::Grid(int rows, int cols, const Rectangle &rect)
-    : Grid(rows, cols, rect.width, rect.height, rect.center.x, rect.center.y) {}
+    : Grid(rows, cols, rect.width, rect.height, rect.center.x, rect.center.y, rect.center.z) {}
 
 // TODO: probably swap the order here?
 Rectangle Grid::get_at(int col, int row) const {
@@ -103,7 +104,7 @@ Rectangle Grid::get_at(int col, int row) const {
     float x_center = origin_x - grid_width / 2 + rect_width * (col + 0.5f);   // X position
     float y_center = origin_y + grid_height / 2 - rect_height * (row + 0.5f); // Y position
 
-    glm::vec3 center = {x_center, y_center, 0.0f}; // Center in 3D space
+    glm::vec3 center = {x_center, y_center, origin_z}; // Center in 3D space
 
     return Rectangle{center, rect_width, rect_height};
 }
@@ -463,6 +464,21 @@ std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_
         {center_x + half_width, center_y - half_height, 0.0f}, // bottom right
         {center_x - half_width, center_y - half_height, 0.0f}, // bottom left
         {center_x - half_width, center_y + half_height, 0.0f}  // top left
+    };
+}
+
+std::vector<glm::vec3> generate_rectangle_vertices_with_z(float center_x, float center_y, float center_z, float width,
+                                                          float height) {
+
+    float half_width = width / (float)2;
+    float half_height = height / (float)2;
+
+    // todo currently makes a rectangle twice as big as side length
+    return {
+        {center_x + half_width, center_y + half_height, center_z}, // top right
+        {center_x + half_width, center_y - half_height, center_z}, // bottom right
+        {center_x - half_width, center_y - half_height, center_z}, // bottom left
+        {center_x - half_width, center_y + half_height, center_z}  // top left
     };
 }
 
