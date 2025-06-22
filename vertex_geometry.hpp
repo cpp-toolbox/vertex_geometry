@@ -109,6 +109,12 @@ IndexedVertices generate_grid(const glm::vec3 &center_position, float width, flo
 
 std::vector<unsigned int> flatten_and_increment_indices(const std::vector<std::vector<unsigned int>> &indices);
 
+draw_info::IndexedVertexPositions generate_torus(int major_segments = 64,   // Around the main ring
+                                                 int minor_segments = 32,   // Around the tube
+                                                 float major_radius = 1.0f, // Distance from center to tube center
+                                                 float minor_radius = 0.3f  // Radius of the tube
+);
+
 draw_info::IndexedVertexPositions generate_cone(int segments, float height, float radius);
 
 draw_info::IndexedVertexPositions generate_cone_between(const glm::vec3 &base, const glm::vec3 &tip, int segments,

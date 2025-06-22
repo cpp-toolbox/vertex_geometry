@@ -526,6 +526,55 @@ draw_info::IndexedVertexPositions generate_cone_between(const glm::vec3 &base, c
     return {indices, vertices};
 }
 
+// about to do torus
+
+draw_info::IndexedVertexPositions generate_torus(int major_segments, int minor_segments, float major_radius,
+                                                 float minor_radius) {
+    std::vector<glm::vec3> vertices;
+    std::vector<unsigned int> indices;
+
+    for (int i = 0; i < major_segments; ++i) {
+        float major_angle = 2.0f * M_PI * i / major_segments;
+        glm::vec3 circle_center = glm::vec3(cos(major_angle), 0.0f, sin(major_angle)) * major_radius;
+
+        glm::vec3 tangent = glm::vec3(-sin(major_angle), 0.0f, cos(major_angle)); // direction of circle
+        glm::vec3 bitangent = glm::vec3(0.0f, 1.0f, 0.0f);                 // perpendicular to tangent, forms local Y
+        glm::vec3 normal = glm::normalize(glm::cross(tangent, bitangent)); // forms local Z
+
+        for (int j = 0; j < minor_segments; ++j) {
+            float minor_angle = 2.0f * M_PI * j / minor_segments;
+            float x = cos(minor_angle);
+            float y = sin(minor_angle);
+            glm::vec3 local_offset = normal * x * minor_radius + bitangent * y * minor_radius;
+            vertices.push_back(circle_center + local_offset);
+        }
+    }
+
+    for (int i = 0; i < major_segments; ++i) {
+        for (int j = 0; j < minor_segments; ++j) {
+            int next_i = (i + 1) % major_segments;
+            int next_j = (j + 1) % minor_segments;
+
+            int current = i * minor_segments + j;
+            int right = i * minor_segments + next_j;
+            int below = next_i * minor_segments + j;
+            int below_right = next_i * minor_segments + next_j;
+
+            // First triangle
+            indices.push_back(current);
+            indices.push_back(below_right);
+            indices.push_back(right);
+
+            // Second triangle
+            indices.push_back(current);
+            indices.push_back(below);
+            indices.push_back(below_right);
+        }
+    }
+
+    return {indices, vertices};
+}
+
 draw_info::IndexedVertexPositions generate_cone(int segments, float height, float radius) {
     std::vector<glm::vec3> vertices;
     std::vector<unsigned int> indices;
