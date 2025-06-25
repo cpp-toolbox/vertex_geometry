@@ -38,6 +38,60 @@ bool is_right_angle(const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 &c) 
     return dot(ab, bc) == 0.0f; // Check if the vectors are perpendicular (dot product = 0)
 }
 
+std::string strip_leading_newlines(const std::string &text) {
+    size_t start = 0;
+    while (start < text.size() && text[start] == '\n') {
+        ++start;
+    }
+    return text.substr(start);
+}
+
+draw_info::IndexedVertexPositions text_grid_to_rect_grid(const std::string &text_grid,
+                                                         const vertex_geometry::Rectangle bounding_rect) {
+    unsigned int rows = 0;
+    unsigned int cols = 0;
+
+    // count rows and columns based on text_grid.
+    std::vector<std::string> lines;
+    std::string line;
+    std::string cleaned_text_grid = strip_leading_newlines(text_grid);
+
+    for (char c : cleaned_text_grid) {
+        if (c == '\n') {
+            lines.push_back(line);
+            line.clear();
+        } else {
+            line += c;
+        }
+    }
+    if (!line.empty())
+        lines.push_back(line); // for the last line if there's no final newline.
+
+    rows = lines.size();
+    if (rows > 0) {
+        cols = lines[0].length(); // assuming all rows have equal length.
+    }
+
+    // Initialize grid
+    vertex_geometry::Grid grid(rows, cols, bounding_rect);
+
+    std::vector<draw_info::IndexedVertexPositions> ivps;
+
+    // iterate over the grid and collect indexed vertex positions for '*' characters.
+    for (unsigned int row = 0; row < rows; ++row) {
+        for (unsigned int col = 0; col < cols; ++col) {
+            if (lines[row][col] == '*') {
+                vertex_geometry::Rectangle rect = grid.get_at(col, row);
+                vertex_geometry::IndexedVertices ivs = rect.get_ivs();
+                draw_info::IndexedVertexPositions ivp(ivs.indices, ivs.vertices);
+                ivps.push_back(ivp);
+            }
+        }
+    }
+
+    return vertex_geometry::merge_ivps(ivps);
+}
+
 bool are_valid_rectangle_corners(const glm::vec3 &top_left, const glm::vec3 &top_right, const glm::vec3 &bottom_left,
                                  const glm::vec3 &bottom_right) {
     return is_right_angle(top_left, top_right, bottom_right) && is_right_angle(top_right, bottom_right, bottom_left) &&

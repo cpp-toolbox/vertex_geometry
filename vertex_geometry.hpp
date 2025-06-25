@@ -83,6 +83,9 @@ class Grid {
     float rect_height; // Height of each rectangle
 };
 
+draw_info::IndexedVertexPositions text_grid_to_rect_grid(const std::string &text_grid,
+                                                         const vertex_geometry::Rectangle bounding_rect);
+
 Rectangle create_rectangle_from_corners(const glm::vec3 top_left, const glm::vec3 top_right,
                                         const glm::vec3 bottom_left, const glm::vec3 bottom_right);
 Rectangle create_rectangle(float x_pos, float y_pos, float width, float height);
