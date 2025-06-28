@@ -97,6 +97,14 @@ Rectangle create_rectangle_from_center_left(const glm::vec3 &center_left, float 
 
 Rectangle create_rectangle_from_center(const glm::vec3 &center, float width, float height);
 
+std::vector<Rectangle> subdivide_rectangle(const Rectangle &rect, unsigned int num_subdivisions, bool vertical = true);
+
+// when you subdivide vertically think of it as cutting up and down like lines in a book
+std::vector<Rectangle> vertical_weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights);
+
+// when you subdivide horizontally you're cutting a carrot on a cutting board
+std::vector<Rectangle> horizontal_weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights);
+
 std::vector<Rectangle> weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights,
                                             bool vertical = true);
 

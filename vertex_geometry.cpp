@@ -329,6 +329,20 @@ Rectangle get_bounding_rectangle(const std::vector<Rectangle> &rectangles) {
     return {bounding_center, bounding_width, bounding_height};
 }
 
+std::vector<Rectangle> subdivide_rectangle(const Rectangle &rect, unsigned int num_subdivisions, bool vertical) {
+    std::vector<unsigned int> even_weights(num_subdivisions, 1);
+    return weighted_subdivision(rect, even_weights, vertical);
+}
+
+std::vector<Rectangle> vertical_weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights) {
+    return weighted_subdivision(rect, weights);
+}
+
+std::vector<Rectangle> horizontal_weighted_subdivision(const Rectangle &rect,
+                                                       const std::vector<unsigned int> &weights) {
+    return weighted_subdivision(rect, weights, false);
+}
+
 std::vector<Rectangle> weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights,
                                             bool vertical) {
     std::vector<Rectangle> subrectangles;
@@ -438,7 +452,8 @@ IndexedVertices generate_grid(const glm::vec3 &center_position, float base_width
  * @param indices A vector of vectors, where each inner vector contains a contiguous set of integers.
  * @return A single vector of indices, flattened and adjusted to ensure uniqueness.
  *
- * @note The function asserts that each inner vector follows the precondition of having a contiguous set of integers.
+ * @note The function asserts that each inner vector follows the precondition of having a contiguous set of
+ * integers.
  */
 std::vector<unsigned int> flatten_and_increment_indices(const std::vector<std::vector<unsigned int>> &indices) {
     std::vector<unsigned int> flattened_indices;
@@ -1097,10 +1112,10 @@ std::vector<glm::vec3> generate_rectangle_vertices_3d(const glm::vec3 &center, c
  *  --/
  * A
  *
- * given the direction vector B - A, then note that there are a family of surface normals yielding the same width dir,
- * note that the surface normal and B - A define a plane that passes through both lines, and any vector such as SN1 or
- * SN2 also will create width_dir with the cross product is used, this we don't require that the surface normal be
- * actually perpendicular to B - A
+ * given the direction vector B - A, then note that there are a family of surface normals yielding the same width
+ * dir, note that the surface normal and B - A define a plane that passes through both lines, and any vector such as
+ * SN1 or SN2 also will create width_dir with the cross product is used, this we don't require that the surface
+ * normal be actually perpendicular to B - A
  *
  *
  */
