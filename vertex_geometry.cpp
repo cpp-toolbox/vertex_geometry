@@ -597,25 +597,30 @@ draw_info::IndexedVertexPositions generate_cone_between(const glm::vec3 &base, c
 
 // about to do torus
 
-draw_info::IndexedVertexPositions generate_torus(int major_segments, int minor_segments, float major_radius,
-                                                 float minor_radius) {
+draw_info::IVPNormals generate_torus(int major_segments, int minor_segments, float major_radius, float minor_radius) {
     std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> normals;
     std::vector<unsigned int> indices;
 
     for (int i = 0; i < major_segments; ++i) {
         float major_angle = 2.0f * M_PI * i / major_segments;
         glm::vec3 circle_center = glm::vec3(cos(major_angle), 0.0f, sin(major_angle)) * major_radius;
 
-        glm::vec3 tangent = glm::vec3(-sin(major_angle), 0.0f, cos(major_angle)); // direction of circle
-        glm::vec3 bitangent = glm::vec3(0.0f, 1.0f, 0.0f);                 // perpendicular to tangent, forms local Y
-        glm::vec3 normal = glm::normalize(glm::cross(tangent, bitangent)); // forms local Z
+        glm::vec3 tangent = glm::vec3(-sin(major_angle), 0.0f, cos(major_angle)); // local X
+        glm::vec3 bitangent = glm::vec3(0.0f, 1.0f, 0.0f);                        // local Y
+        glm::vec3 normal = glm::normalize(glm::cross(tangent, bitangent));        // local Z
 
         for (int j = 0; j < minor_segments; ++j) {
             float minor_angle = 2.0f * M_PI * j / minor_segments;
             float x = cos(minor_angle);
             float y = sin(minor_angle);
+
             glm::vec3 local_offset = normal * x * minor_radius + bitangent * y * minor_radius;
-            vertices.push_back(circle_center + local_offset);
+            glm::vec3 position = circle_center + local_offset;
+            glm::vec3 vertex_normal = glm::normalize(local_offset); // normal points away from tube center
+
+            vertices.push_back(position);
+            normals.push_back(vertex_normal);
         }
     }
 
@@ -641,45 +646,219 @@ draw_info::IndexedVertexPositions generate_torus(int major_segments, int minor_s
         }
     }
 
-    return {indices, vertices};
+    return draw_info::IVPNormals(indices, vertices, normals);
 }
 
-draw_info::IndexedVertexPositions generate_cone(int segments, float height, float radius) {
+draw_info::IVPNormals generate_cube(float size) {
     std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> normals;
+    std::vector<unsigned int> indices;
+
+    float h = size / 2.0f;
+
+    // Define the 6 cube faces with their normals
+    struct Face {
+        glm::vec3 normal;
+        glm::vec3 corners[4];
+    };
+
+    std::vector<Face> faces = {
+        // Front (+Z)
+        {glm::vec3(0, 0, 1),
+         {
+             glm::vec3(-h, -h, h),
+             glm::vec3(h, -h, h),
+             glm::vec3(h, h, h),
+             glm::vec3(-h, h, h),
+         }},
+        // Back (-Z)
+        {glm::vec3(0, 0, -1),
+         {
+             glm::vec3(h, -h, -h),
+             glm::vec3(-h, -h, -h),
+             glm::vec3(-h, h, -h),
+             glm::vec3(h, h, -h),
+         }},
+        // Left (-X)
+        {glm::vec3(-1, 0, 0),
+         {
+             glm::vec3(-h, -h, -h),
+             glm::vec3(-h, -h, h),
+             glm::vec3(-h, h, h),
+             glm::vec3(-h, h, -h),
+         }},
+        // Right (+X)
+        {glm::vec3(1, 0, 0),
+         {
+             glm::vec3(h, -h, h),
+             glm::vec3(h, -h, -h),
+             glm::vec3(h, h, -h),
+             glm::vec3(h, h, h),
+         }},
+        // Top (+Y)
+        {glm::vec3(0, 1, 0),
+         {
+             glm::vec3(-h, h, h),
+             glm::vec3(h, h, h),
+             glm::vec3(h, h, -h),
+             glm::vec3(-h, h, -h),
+         }},
+        // Bottom (-Y)
+        {glm::vec3(0, -1, 0),
+         {
+             glm::vec3(-h, -h, -h),
+             glm::vec3(h, -h, -h),
+             glm::vec3(h, -h, h),
+             glm::vec3(-h, -h, h),
+         }},
+    };
+
+    for (const auto &face : faces) {
+        unsigned int start_index = static_cast<unsigned int>(vertices.size());
+        for (int i = 0; i < 4; ++i) {
+            vertices.push_back(face.corners[i]);
+            normals.push_back(face.normal);
+        }
+        indices.insert(indices.end(),
+                       {start_index, start_index + 1, start_index + 2, start_index, start_index + 2, start_index + 3});
+    }
+
+    return draw_info::IVPNormals(std::move(indices), std::move(vertices), std::move(normals));
+}
+
+draw_info::IVPNormals generate_box(float size_x, float size_y, float size_z) {
+    std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> normals;
+    std::vector<unsigned int> indices;
+
+    float hx = size_x / 2.0f;
+    float hy = size_y / 2.0f;
+    float hz = size_z / 2.0f;
+
+    struct Face {
+        glm::vec3 normal;
+        glm::vec3 corners[4];
+    };
+
+    std::vector<Face> faces = {
+        // Front (+Z)
+        {glm::vec3(0, 0, 1),
+         {
+             glm::vec3(-hx, -hy, hz),
+             glm::vec3(hx, -hy, hz),
+             glm::vec3(hx, hy, hz),
+             glm::vec3(-hx, hy, hz),
+         }},
+        // Back (-Z)
+        {glm::vec3(0, 0, -1),
+         {
+             glm::vec3(hx, -hy, -hz),
+             glm::vec3(-hx, -hy, -hz),
+             glm::vec3(-hx, hy, -hz),
+             glm::vec3(hx, hy, -hz),
+         }},
+        // Left (-X)
+        {glm::vec3(-1, 0, 0),
+         {
+             glm::vec3(-hx, -hy, -hz),
+             glm::vec3(-hx, -hy, hz),
+             glm::vec3(-hx, hy, hz),
+             glm::vec3(-hx, hy, -hz),
+         }},
+        // Right (+X)
+        {glm::vec3(1, 0, 0),
+         {
+             glm::vec3(hx, -hy, hz),
+             glm::vec3(hx, -hy, -hz),
+             glm::vec3(hx, hy, -hz),
+             glm::vec3(hx, hy, hz),
+         }},
+        // Top (+Y)
+        {glm::vec3(0, 1, 0),
+         {
+             glm::vec3(-hx, hy, hz),
+             glm::vec3(hx, hy, hz),
+             glm::vec3(hx, hy, -hz),
+             glm::vec3(-hx, hy, -hz),
+         }},
+        // Bottom (-Y)
+        {glm::vec3(0, -1, 0),
+         {
+             glm::vec3(-hx, -hy, -hz),
+             glm::vec3(hx, -hy, -hz),
+             glm::vec3(hx, -hy, hz),
+             glm::vec3(-hx, -hy, hz),
+         }},
+    };
+
+    for (const auto &face : faces) {
+        unsigned int start_index = static_cast<unsigned int>(vertices.size());
+        for (int i = 0; i < 4; ++i) {
+            vertices.push_back(face.corners[i]);
+            normals.push_back(face.normal);
+        }
+        indices.insert(indices.end(),
+                       {start_index, start_index + 1, start_index + 2, start_index, start_index + 2, start_index + 3});
+    }
+
+    return draw_info::IVPNormals(std::move(indices), std::move(vertices), std::move(normals));
+}
+
+draw_info::IVPNormals generate_cone(int segments, float height, float radius) {
+    std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> normals;
     std::vector<unsigned int> indices;
 
     float half_height = height / 2.0f;
     float angle_increment = 2.0f * M_PI / segments;
 
-    // top vertex (apex of the cone)
-    vertices.push_back(glm::vec3(0.0f, half_height, 0.0f));
+    // Apex vertex (index 0)
+    glm::vec3 apex = glm::vec3(0.0f, half_height, 0.0f);
+    vertices.push_back(apex);
+    normals.push_back(glm::normalize(glm::vec3(0.0f, radius, 0.0f))); // Upward, slightly smoothed
 
-    // bottom center vertex
-    vertices.push_back(glm::vec3(0.0f, -half_height, 0.0f));
+    // Bottom center vertex (index 1)
+    glm::vec3 bottom_center = glm::vec3(0.0f, -half_height, 0.0f);
+    vertices.push_back(bottom_center);
+    normals.push_back(glm::vec3(0.0f, -1.0f, 0.0f)); // Pointing down
 
-    // generate vertices for the bottom circle
+    // Bottom ring vertices (indices 2..)
+    std::vector<glm::vec3> base_ring;
     for (int i = 0; i < segments; ++i) {
         float angle = i * angle_increment;
         float x = radius * cos(angle);
         float z = radius * sin(angle);
-        vertices.push_back(glm::vec3(x, -half_height, z));
+        glm::vec3 pos = glm::vec3(x, -half_height, z);
+        vertices.push_back(pos);
+        base_ring.push_back(pos);
+
+        // Bottom face normal (flat)
+        normals.push_back(glm::vec3(0.0f, -1.0f, 0.0f));
     }
 
-    // generate indices for the bottom face (fan)
+    // Side face normals for each base ring vertex
     for (int i = 0; i < segments; ++i) {
-        indices.push_back(1); // Bottom center vertex
+        glm::vec3 p = base_ring[i];
+        glm::vec3 dir = glm::normalize(glm::vec3(p.x, 0.0f, p.z));
+        glm::vec3 sloped_normal = glm::normalize(glm::vec3(dir.x, radius / height, dir.z)); // Estimate
+        normals[2 + i] = sloped_normal;
+    }
+
+    // Bottom face indices (triangle fan)
+    for (int i = 0; i < segments; ++i) {
+        indices.push_back(1); // Bottom center
         indices.push_back(2 + i);
         indices.push_back(2 + ((i + 1) % segments));
     }
 
-    // generate indices for the side faces
+    // Side face indices (triangle fan from apex)
     for (int i = 0; i < segments; ++i) {
-        indices.push_back(0); // Apex of the cone
+        indices.push_back(0); // Apex
         indices.push_back(2 + ((i + 1) % segments));
         indices.push_back(2 + i);
     }
 
-    return {indices, vertices};
+    return draw_info::IVPNormals(std::move(indices), std::move(vertices), std::move(normals));
 }
 
 draw_info::IndexedVertexPositions generate_cylinder_between(const glm::vec3 &p1, const glm::vec3 &p2, int segments,
@@ -747,18 +926,20 @@ draw_info::IndexedVertexPositions generate_cylinder_between(const glm::vec3 &p1,
     return {indices, vertices};
 }
 
-draw_info::IndexedVertexPositions generate_cylinder(int segments, float height, float radius) {
+draw_info::IVPNormals generate_cylinder(int segments, float height, float radius) {
     std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> normals;
     std::vector<unsigned int> indices;
-
     float half_height = height / 2.0f;
     float angle_increment = 2.0f * M_PI / segments;
 
     // Top center vertex
     vertices.push_back(glm::vec3(0.0f, half_height, 0.0f));
+    normals.push_back(glm::vec3(0.0f, 1.0f, 0.0f)); // Up normal
 
     // Bottom center vertex
     vertices.push_back(glm::vec3(0.0f, -half_height, 0.0f));
+    normals.push_back(glm::vec3(0.0f, -1.0f, 0.0f)); // Down normal
 
     // Generate vertices for top and bottom circles
     for (int i = 0; i < segments; ++i) {
@@ -768,9 +949,27 @@ draw_info::IndexedVertexPositions generate_cylinder(int segments, float height, 
 
         // Top circle
         vertices.push_back(glm::vec3(x, half_height, z));
+        normals.push_back(glm::vec3(0.0f, 1.0f, 0.0f)); // Up normal for top face
 
         // Bottom circle
         vertices.push_back(glm::vec3(x, -half_height, z));
+        normals.push_back(glm::vec3(0.0f, -1.0f, 0.0f)); // Down normal for bottom face
+    }
+
+    // Add side vertices (duplicate positions but with radial normals)
+    for (int i = 0; i < segments; ++i) {
+        float angle = i * angle_increment;
+        float x = radius * cos(angle);
+        float z = radius * sin(angle);
+        glm::vec3 radial_normal = glm::normalize(glm::vec3(x, 0.0f, z));
+
+        // Top side vertex
+        vertices.push_back(glm::vec3(x, half_height, z));
+        normals.push_back(radial_normal);
+
+        // Bottom side vertex
+        vertices.push_back(glm::vec3(x, -half_height, z));
+        normals.push_back(radial_normal);
     }
 
     // Generate indices for the top face
@@ -787,12 +986,13 @@ draw_info::IndexedVertexPositions generate_cylinder(int segments, float height, 
         indices.push_back(3 + ((i * 2 + 2) % (segments * 2)));
     }
 
-    // Generate indices for the side faces
+    // Generate indices for the side faces using the side vertices
+    int side_vertex_offset = 2 + segments * 2; // Offset to side vertices
     for (int i = 0; i < segments; ++i) {
-        int top1 = 2 + (i * 2);
-        int bottom1 = 3 + (i * 2);
-        int top2 = 2 + ((i * 2 + 2) % (segments * 2));
-        int bottom2 = 3 + ((i * 2 + 2) % (segments * 2));
+        int top1 = side_vertex_offset + (i * 2);
+        int bottom1 = side_vertex_offset + (i * 2) + 1;
+        int top2 = side_vertex_offset + ((i + 1) % segments) * 2;
+        int bottom2 = side_vertex_offset + ((i + 1) % segments) * 2 + 1;
 
         // First triangle
         indices.push_back(top1);
@@ -805,7 +1005,7 @@ draw_info::IndexedVertexPositions generate_cylinder(int segments, float height, 
         indices.push_back(bottom2);
     }
 
-    return {indices, vertices};
+    return draw_info::IVPNormals(indices, vertices, normals);
 }
 
 // Function to generate the initial icosahedron vertices
@@ -865,14 +1065,239 @@ void subdivide_icosahedron(int subdivisions, std::vector<glm::vec3> &vertices, s
         indices = std::move(new_indices);
     }
 }
+// Function to compute normals for sphere vertices
+std::vector<glm::vec3> compute_sphere_normals(const std::vector<glm::vec3> &vertices) {
+    std::vector<glm::vec3> normals;
+    normals.reserve(vertices.size());
 
-draw_info::IndexedVertexPositions generate_icosphere(int subdivisions, float radius) {
+    for (const auto &vertex : vertices) {
+        // For a sphere centered at origin, the normal is just the normalized position vector
+        normals.push_back(glm::normalize(vertex));
+    }
+
+    return normals;
+}
+
+draw_info::IVPNormals generate_icosphere(int subdivisions, float radius) {
     std::vector<glm::vec3> vertices = generate_initial_icosahedron_vertices(radius);
     std::vector<unsigned int> indices = generate_initial_icosahedron_indices();
 
     subdivide_icosahedron(subdivisions, vertices, indices, radius);
 
-    return {indices, vertices};
+    auto normals = compute_sphere_normals(vertices);
+
+    return {indices, vertices, normals};
+}
+
+// Simple noise function for terrain generation
+float noise(float x, float z, float seed = 0.0f) {
+    // Simple hash-based noise function
+    float n = std::sin(x * 12.9898f + z * 78.233f + seed) * 43758.5453f;
+    return n - std::floor(n); // Return fractional part [0, 1]
+}
+
+// Multi-octave noise for more natural terrain
+float fractal_noise(float x, float z, int octaves, float persistence, float scale, float seed = 0.0f) {
+    float total = 0.0f;
+    float frequency = 1.0f / scale;
+    float amplitude = 1.0f;
+    float max_value = 0.0f;
+
+    for (int i = 0; i < octaves; ++i) {
+        total += noise(x * frequency, z * frequency, seed + i * 100.0f) * amplitude;
+        max_value += amplitude;
+        amplitude *= persistence;
+        frequency *= 2.0f;
+    }
+
+    return total / max_value; // Normalize to [0, 1]
+}
+
+draw_info::IVPNormals generate_terrain(float size_x, float size_z, int resolution_x, int resolution_z, float max_height,
+                                       float base_height, int octaves, float persistence, float scale, float seed) {
+    std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> normals;
+    std::vector<unsigned int> indices;
+
+    float half_x = size_x / 2.0f;
+    float half_z = size_z / 2.0f;
+    float step_x = size_x / (resolution_x - 1);
+    float step_z = size_z / (resolution_z - 1);
+
+    // Generate height map
+    std::vector<std::vector<float>> height_map(resolution_x, std::vector<float>(resolution_z));
+
+    for (int x = 0; x < resolution_x; ++x) {
+        for (int z = 0; z < resolution_z; ++z) {
+            float world_x = -half_x + x * step_x;
+            float world_z = -half_z + z * step_z;
+
+            // Generate height using fractal noise
+            float height = fractal_noise(world_x, world_z, octaves, persistence, scale, seed);
+            height_map[x][z] = base_height + height * max_height;
+        }
+    }
+
+    // Generate top surface vertices
+    for (int x = 0; x < resolution_x; ++x) {
+        for (int z = 0; z < resolution_z; ++z) {
+            float world_x = -half_x + x * step_x;
+            float world_z = -half_z + z * step_z;
+            float height = height_map[x][z];
+
+            vertices.push_back(glm::vec3(world_x, height, world_z));
+
+            // Calculate normal using neighboring heights
+            glm::vec3 normal(0.0f, 1.0f, 0.0f); // Default up normal
+
+            if (x > 0 && x < resolution_x - 1 && z > 0 && z < resolution_z - 1) {
+                // Calculate gradients
+                float height_left = height_map[x - 1][z];
+                float height_right = height_map[x + 1][z];
+                float height_down = height_map[x][z - 1];
+                float height_up = height_map[x][z + 1];
+
+                glm::vec3 tangent_x = glm::normalize(glm::vec3(2.0f * step_x, height_right - height_left, 0.0f));
+                glm::vec3 tangent_z = glm::normalize(glm::vec3(0.0f, height_up - height_down, 2.0f * step_z));
+
+                normal = glm::normalize(glm::cross(tangent_x, tangent_z));
+            }
+
+            normals.push_back(normal);
+        }
+    }
+
+    // Generate bottom surface vertices (flat)
+    for (int x = 0; x < resolution_x; ++x) {
+        for (int z = 0; z < resolution_z; ++z) {
+            float world_x = -half_x + x * step_x;
+            float world_z = -half_z + z * step_z;
+
+            vertices.push_back(glm::vec3(world_x, base_height - max_height, world_z));
+            normals.push_back(glm::vec3(0.0f, -1.0f, 0.0f)); // Down normal
+        }
+    }
+
+    // Generate side wall vertices
+    int top_vertex_count = resolution_x * resolution_z;
+    int bottom_vertex_count = resolution_x * resolution_z;
+
+    // Front wall (Z = +half_z)
+    for (int x = 0; x < resolution_x; ++x) {
+        int z = resolution_z - 1;
+        float world_x = -half_x + x * step_x;
+        float top_height = height_map[x][z];
+        float bottom_height = base_height - max_height;
+
+        vertices.push_back(glm::vec3(world_x, top_height, half_z));
+        vertices.push_back(glm::vec3(world_x, bottom_height, half_z));
+        normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
+        normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
+    }
+
+    // Back wall (Z = -half_z)
+    for (int x = 0; x < resolution_x; ++x) {
+        int z = 0;
+        float world_x = -half_x + x * step_x;
+        float top_height = height_map[x][z];
+        float bottom_height = base_height - max_height;
+
+        vertices.push_back(glm::vec3(world_x, top_height, -half_z));
+        vertices.push_back(glm::vec3(world_x, bottom_height, -half_z));
+        normals.push_back(glm::vec3(0.0f, 0.0f, -1.0f));
+        normals.push_back(glm::vec3(0.0f, 0.0f, -1.0f));
+    }
+
+    // Left wall (X = -half_x)
+    for (int z = 0; z < resolution_z; ++z) {
+        int x = 0;
+        float world_z = -half_z + z * step_z;
+        float top_height = height_map[x][z];
+        float bottom_height = base_height - max_height;
+
+        vertices.push_back(glm::vec3(-half_x, top_height, world_z));
+        vertices.push_back(glm::vec3(-half_x, bottom_height, world_z));
+        normals.push_back(glm::vec3(-1.0f, 0.0f, 0.0f));
+        normals.push_back(glm::vec3(-1.0f, 0.0f, 0.0f));
+    }
+
+    // Right wall (X = +half_x)
+    for (int z = 0; z < resolution_z; ++z) {
+        int x = resolution_x - 1;
+        float world_z = -half_z + z * step_z;
+        float top_height = height_map[x][z];
+        float bottom_height = base_height - max_height;
+
+        vertices.push_back(glm::vec3(half_x, top_height, world_z));
+        vertices.push_back(glm::vec3(half_x, bottom_height, world_z));
+        normals.push_back(glm::vec3(1.0f, 0.0f, 0.0f));
+        normals.push_back(glm::vec3(1.0f, 0.0f, 0.0f));
+    }
+
+    // Generate indices for top surface
+    for (int x = 0; x < resolution_x - 1; ++x) {
+        for (int z = 0; z < resolution_z - 1; ++z) {
+            unsigned int top_left = x * resolution_z + z;
+            unsigned int top_right = (x + 1) * resolution_z + z;
+            unsigned int bottom_left = x * resolution_z + (z + 1);
+            unsigned int bottom_right = (x + 1) * resolution_z + (z + 1);
+
+            // Two triangles per quad
+            indices.insert(indices.end(), {top_left, bottom_left, top_right});
+            indices.insert(indices.end(), {top_right, bottom_left, bottom_right});
+        }
+    }
+
+    // Generate indices for bottom surface
+    for (int x = 0; x < resolution_x - 1; ++x) {
+        for (int z = 0; z < resolution_z - 1; ++z) {
+            unsigned int base_offset = top_vertex_count;
+            unsigned int top_left = base_offset + x * resolution_z + z;
+            unsigned int top_right = base_offset + (x + 1) * resolution_z + z;
+            unsigned int bottom_left = base_offset + x * resolution_z + (z + 1);
+            unsigned int bottom_right = base_offset + (x + 1) * resolution_z + (z + 1);
+
+            // Two triangles per quad (reversed winding for bottom)
+            indices.insert(indices.end(), {top_left, top_right, bottom_left});
+            indices.insert(indices.end(), {top_right, bottom_right, bottom_left});
+        }
+    }
+
+    // Generate indices for side walls
+    unsigned int wall_vertex_offset = top_vertex_count + bottom_vertex_count;
+
+    // Front wall
+    for (int x = 0; x < resolution_x - 1; ++x) {
+        unsigned int base = wall_vertex_offset + x * 2;
+        indices.insert(indices.end(), {base, base + 1, base + 2});
+        indices.insert(indices.end(), {base + 2, base + 1, base + 3});
+    }
+    wall_vertex_offset += resolution_x * 2;
+
+    // Back wall
+    for (int x = 0; x < resolution_x - 1; ++x) {
+        unsigned int base = wall_vertex_offset + x * 2;
+        indices.insert(indices.end(), {base, base + 2, base + 1});
+        indices.insert(indices.end(), {base + 2, base + 3, base + 1});
+    }
+    wall_vertex_offset += resolution_x * 2;
+
+    // Left wall
+    for (int z = 0; z < resolution_z - 1; ++z) {
+        unsigned int base = wall_vertex_offset + z * 2;
+        indices.insert(indices.end(), {base, base + 2, base + 1});
+        indices.insert(indices.end(), {base + 2, base + 3, base + 1});
+    }
+    wall_vertex_offset += resolution_z * 2;
+
+    // Right wall
+    for (int z = 0; z < resolution_z - 1; ++z) {
+        unsigned int base = wall_vertex_offset + z * 2;
+        indices.insert(indices.end(), {base, base + 1, base + 2});
+        indices.insert(indices.end(), {base + 2, base + 1, base + 3});
+    }
+
+    return draw_info::IVPNormals(std::move(indices), std::move(vertices), std::move(normals));
 }
 
 glm::vec3 f(double t) { return glm::vec3(std::cos(t), std::sin(t), t); }
@@ -1150,6 +1575,15 @@ std::vector<glm::vec2> generate_rectangle_texture_coordinates() {
         glm::vec2(1.0f, 1.0f), // Top-right
         glm::vec2(0.0f, 1.0f), // Top-left
         glm::vec2(0.0f, 0.0f)  // Bottom-left
+    };
+}
+
+std::vector<glm::vec2> generate_rectangle_texture_coordinates_flipped_vertically() {
+    return {
+        glm::vec2(1.0f, 1.0f), // Top-right (was Bottom-right)
+        glm::vec2(1.0f, 0.0f), // Bottom-right (was Top-right)
+        glm::vec2(0.0f, 0.0f), // Bottom-left (was Top-left)
+        glm::vec2(0.0f, 1.0f)  // Top-left (was Bottom-left)
     };
 }
 

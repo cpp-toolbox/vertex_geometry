@@ -120,23 +120,32 @@ IndexedVertices generate_grid(const glm::vec3 &center_position, float width, flo
 
 std::vector<unsigned int> flatten_and_increment_indices(const std::vector<std::vector<unsigned int>> &indices);
 
-draw_info::IndexedVertexPositions generate_torus(int major_segments = 64,   // Around the main ring
-                                                 int minor_segments = 32,   // Around the tube
-                                                 float major_radius = 1.0f, // Distance from center to tube center
-                                                 float minor_radius = 0.3f  // Radius of the tube
+draw_info::IVPNormals generate_torus(int major_segments = 64,   // Around the main ring
+                                     int minor_segments = 32,   // Around the tube
+                                     float major_radius = 1.0f, // Distance from center to tube center
+                                     float minor_radius = 0.3f  // Radius of the tube
 );
 
-draw_info::IndexedVertexPositions generate_cone(int segments, float height, float radius);
+draw_info::IVPNormals generate_cube(float size = 1.0f);
+
+draw_info::IVPNormals generate_box(float size_x = 1.0f, float size_y = 1.0f, float size_z = 1.0f);
+
+draw_info::IVPNormals generate_cone(int segments = 8, float height = 1.0f, float radius = 0.5f);
 
 draw_info::IndexedVertexPositions generate_cone_between(const glm::vec3 &base, const glm::vec3 &tip, int segments,
                                                         float radius);
 
-draw_info::IndexedVertexPositions generate_cylinder(int segments, float height, float radius);
+draw_info::IVPNormals generate_cylinder(int segments = 8, float height = 1.0f, float radius = 0.5f);
 
 draw_info::IndexedVertexPositions generate_cylinder_between(const glm::vec3 &p1, const glm::vec3 &p2, int segments,
                                                             float radius);
 
-draw_info::IndexedVertexPositions generate_icosphere(int subdivisions, float radius);
+draw_info::IVPNormals generate_icosphere(int subdivisions, float radius);
+
+draw_info::IVPNormals generate_terrain(float size_x = 100.0f, float size_z = 100.0f, int resolution_x = 50,
+                                       int resolution_z = 50, float max_height = 5.0f, float base_height = 0.0f,
+                                       int octaves = 4, float persistence = 0.5f, float scale = 50.0f,
+                                       float seed = 0.0f);
 
 draw_info::IndexedVertexPositions generate_function_visualization(std::function<glm::vec3(double)> f, double t_start,
                                                                   double t_end, double step_size,
@@ -162,11 +171,13 @@ std::vector<unsigned int> generate_square_indices();
 
 draw_info::IndexedVertexPositions generate_rectangle(float center_x, float center_y, float width, float height);
 std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_y, float width, float height);
-// TODO: the below shouldn't exist, instead the above should just take in z, but i don't want to bust the api right now
+// TODO: the below shouldn't exist, instead the above should just take in z, but i don't want to bust the api right
+// now
 std::vector<glm::vec3> generate_rectangle_vertices_with_z(float center_x, float center_y, float center_z, float width,
                                                           float height);
 std::vector<unsigned int> generate_rectangle_indices();
 std::vector<glm::vec2> generate_rectangle_texture_coordinates();
+std::vector<glm::vec2> generate_rectangle_texture_coordinates_flipped_vertically();
 
 std::vector<glm::vec3> generate_rectangle_vertices_3d(const glm::vec3 &center, const glm::vec3 &width_dir,
                                                       const glm::vec3 &height_dir, float width, float height);
