@@ -11,11 +11,6 @@
 
 namespace vertex_geometry {
 
-struct IndexedVertices {
-    std::vector<glm::vec3> vertices;   // Vertices of the grid
-    std::vector<unsigned int> indices; // Flattened indices of the grid
-};
-
 class Rectangle {
   public:
     // by default we use width height 2 to take up the full [-1, 1] x [-1, 1] ndc space
@@ -24,7 +19,7 @@ class Rectangle {
     glm::vec3 center; // Center position
     float width;      // Width of the rectangle
     float height;     // Height of the rectangle
-    IndexedVertices get_ivs() const;
+    draw_info::IndexedVertexPositions get_ivs() const;
     friend std::ostream &operator<<(std::ostream &os, const Rectangle &rect);
 
     glm::vec3 get_top_left() const;
@@ -112,11 +107,11 @@ std::vector<glm::vec3> generate_rectangle_normals();
 std::vector<Rectangle> generate_grid_rectangles(const glm::vec3 &center_position, float base_width, float base_height,
                                                 int num_rectangles_x, int num_rectangles_y, float spacing);
 
-IndexedVertices generate_grid(const glm::vec3 &center_position, float base_width, float base_height,
-                              int num_rectangles_x, int num_rectangles_y, float spacing);
+draw_info::IndexedVertexPositions generate_grid(const glm::vec3 &center_position, float base_width, float base_height,
+                                                int num_rectangles_x, int num_rectangles_y, float spacing);
 
-IndexedVertices generate_grid(const glm::vec3 &center_position, float width, float height, int num_rectangles_x,
-                              int num_rectangles_y, float spacing);
+draw_info::IndexedVertexPositions generate_grid(const glm::vec3 &center_position, float width, float height,
+                                                int num_rectangles_x, int num_rectangles_y, float spacing);
 
 std::vector<unsigned int> flatten_and_increment_indices(const std::vector<std::vector<unsigned int>> &indices);
 

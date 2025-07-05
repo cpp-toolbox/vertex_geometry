@@ -82,8 +82,7 @@ draw_info::IndexedVertexPositions text_grid_to_rect_grid(const std::string &text
         for (unsigned int col = 0; col < cols; ++col) {
             if (lines[row][col] == '*') {
                 vertex_geometry::Rectangle rect = grid.get_at(col, row);
-                vertex_geometry::IndexedVertices ivs = rect.get_ivs();
-                draw_info::IndexedVertexPositions ivp(ivs.indices, ivs.vertices);
+                draw_info::IndexedVertexPositions ivp = rect.get_ivs();
                 ivps.push_back(ivp);
             }
         }
@@ -123,10 +122,10 @@ Rectangle create_rectangle_from_corners(const glm::vec3 top_left, const glm::vec
     return rect;
 }
 
-IndexedVertices Rectangle::get_ivs() const {
-    return IndexedVertices(
-        generate_rectangle_vertices_with_z(this->center.x, this->center.y, this->center.z, this->width, this->height),
-        generate_rectangle_indices());
+draw_info::IndexedVertexPositions Rectangle::get_ivs() const {
+    return {
+        generate_rectangle_indices(),
+        generate_rectangle_vertices_with_z(this->center.x, this->center.y, this->center.z, this->width, this->height)};
 }
 
 glm::vec3 Rectangle::get_top_left() const { return center + glm::vec3(-width / 2.0f, height / 2.0f, 0.0f); }
@@ -416,8 +415,8 @@ std::vector<Rectangle> generate_grid_rectangles(const glm::vec3 &center_position
     return rectangles;
 }
 
-IndexedVertices generate_grid(const glm::vec3 &center_position, float base_width, float base_height,
-                              int num_rectangles_x, int num_rectangles_y, float spacing) {
+draw_info::IndexedVertexPositions generate_grid(const glm::vec3 &center_position, float base_width, float base_height,
+                                                int num_rectangles_x, int num_rectangles_y, float spacing) {
     std::vector<Rectangle> rectangles =
         generate_grid_rectangles(center_position, base_width, base_height, num_rectangles_x, num_rectangles_y, spacing);
 
@@ -435,7 +434,7 @@ IndexedVertices generate_grid(const glm::vec3 &center_position, float base_width
 
     std::vector<unsigned int> flattened_indices = flatten_and_increment_indices(all_square_indices);
 
-    return {vertices, flattened_indices};
+    return {flattened_indices, vertices};
 }
 
 /**
