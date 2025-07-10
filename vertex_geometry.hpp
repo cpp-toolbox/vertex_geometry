@@ -127,8 +127,8 @@ draw_info::IVPNormals generate_box(float size_x = 1.0f, float size_y = 1.0f, flo
 
 draw_info::IVPNormals generate_cone(int segments = 8, float height = 1.0f, float radius = 0.5f);
 
-draw_info::IndexedVertexPositions generate_cone_between(const glm::vec3 &base, const glm::vec3 &tip, int segments,
-                                                        float radius);
+draw_info::IndexedVertexPositions generate_cone_between(const glm::vec3 &base, const glm::vec3 &tip, int segments = 8,
+                                                        float radius = 0.5);
 
 draw_info::IVPNormals generate_cylinder(int segments = 8, float height = 1.0f, float radius = 0.5f);
 
