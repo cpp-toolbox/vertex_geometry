@@ -78,8 +78,14 @@ class Grid {
     float rect_height; // Height of each rectangle
 };
 
+bool circle_intersects_rect(float cx, float cy, float radius, const Rectangle &rect);
+std::vector<Rectangle> get_rects_intersecting_circle(const Grid &grid, float cx, float cy, float radius);
+
 draw_info::IndexedVertexPositions text_grid_to_rect_grid(const std::string &text_grid,
                                                          const vertex_geometry::Rectangle bounding_rect);
+
+draw_info::IndexedVertexPositions generate_rectangle_between_2d(const glm::vec2 &p1, const glm::vec2 &p2,
+                                                                float thickness);
 
 Rectangle create_rectangle_from_corners(const glm::vec3 top_left, const glm::vec3 top_right,
                                         const glm::vec3 bottom_left, const glm::vec3 bottom_right);
@@ -197,8 +203,13 @@ void scale_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &
 void scale_vertices_in_place(std::vector<glm::vec3> &vertices, float scale_factor);
 void rotate_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &rotation_turns);
 
-std::vector<glm::vec3> generate_n_gon_flattened_vertices(int n);
-int get_num_flattened_vertices_in_n_gon(int n);
+// note: num sides >= 3
+draw_info::IndexedVertexPositions generate_circle(const glm::vec3 center = glm::vec3(0), float radius = 1,
+                                                  unsigned int num_sides = 30);
+draw_info::IndexedVertexPositions generate_n_gon(const glm::vec3 center = glm::vec3(0), float radius = 1,
+                                                 unsigned int num_sides = 30);
+std::vector<unsigned int> generate_n_gon_indices(unsigned int num_sides);
+std::vector<glm::vec3> generate_n_gon_vertices(const glm::vec3 &center, float radius = 1, unsigned int num_sides = 30);
 
 draw_info::IndexedVertexPositions generate_annulus(float center_x, float center_y, float outer_radius,
                                                    float inner_radius, int num_segments, float percent = 1);

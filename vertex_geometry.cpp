@@ -46,6 +46,35 @@ std::string strip_leading_newlines(const std::string &text) {
     return text.substr(start);
 }
 
+bool circle_intersects_rect(float cx, float cy, float radius, const Rectangle &rect) {
+    // Clamp circle center to rectangle bounds to find the closest point on the rect
+    float closest_x = std::max(rect.center.x, std::min(cx, rect.center.x + rect.width));
+    float closest_y = std::max(rect.center.y, std::min(cy, rect.center.y + rect.height));
+
+    float dx = closest_x - cx;
+    float dy = closest_y - cy;
+
+    return dx * dx + dy * dy <= radius * radius;
+}
+
+std::vector<Rectangle> get_rects_intersecting_circle(const Grid &grid, float cx, float cy, float radius) {
+    float x0 = cx - radius;
+    float y0 = cy - radius;
+    float x1 = cx + radius;
+    float y1 = cy + radius;
+
+    std::vector<Rectangle> candidates = grid.get_selection(x0, y0, x1, y1);
+    std::vector<Rectangle> result;
+
+    for (const Rectangle &rect : candidates) {
+        if (circle_intersects_rect(cx, cy, radius, rect)) {
+            result.push_back(rect);
+        }
+    }
+
+    return result;
+}
+
 draw_info::IndexedVertexPositions text_grid_to_rect_grid(const std::string &text_grid,
                                                          const vertex_geometry::Rectangle bounding_rect) {
     unsigned int rows = 0;
@@ -89,6 +118,35 @@ draw_info::IndexedVertexPositions text_grid_to_rect_grid(const std::string &text
     }
 
     return vertex_geometry::merge_ivps(ivps);
+}
+
+draw_info::IndexedVertexPositions generate_rectangle_between_2d(const glm::vec2 &p1, const glm::vec2 &p2,
+                                                                float thickness) {
+    glm::vec2 dir = p2 - p1;
+    float length = glm::length(dir);
+    if (length == 0.0f) {
+        throw std::invalid_argument("Points must not be identical.");
+    }
+
+    glm::vec2 dir_norm = glm::normalize(dir);
+    glm::vec2 perp = glm::vec2(-dir_norm.y, dir_norm.x) * (thickness / 2.0f);
+
+    // Convert 2D points to 3D with z = 0
+    glm::vec3 p1_left = glm::vec3(p1 - perp, 0.0f);
+    glm::vec3 p1_right = glm::vec3(p1 + perp, 0.0f);
+    glm::vec3 p2_left = glm::vec3(p2 - perp, 0.0f);
+    glm::vec3 p2_right = glm::vec3(p2 + perp, 0.0f);
+
+    std::vector<glm::vec3> vertices = {
+        p1_left,  // 0
+        p1_right, // 1
+        p2_right, // 2
+        p2_left   // 3
+    };
+
+    std::vector<unsigned int> indices = {0, 1, 2, 2, 3, 0};
+
+    return {indices, vertices};
 }
 
 bool are_valid_rectangle_corners(const glm::vec3 &top_left, const glm::vec3 &top_right, const glm::vec3 &bottom_left,
@@ -1586,34 +1644,50 @@ std::vector<glm::vec2> generate_rectangle_texture_coordinates_flipped_vertically
     };
 }
 
-int get_num_flattened_vertices_in_n_gon(int n) {
-    // we have a central point, and then we repeat the first point again.
-    int num_vertices = 1 + (n + 1);
-    return num_vertices * 3;
+draw_info::IndexedVertexPositions generate_circle(const glm::vec3 center, float radius, unsigned int num_sides) {
+    return generate_n_gon(center, radius, num_sides);
+}
+
+draw_info::IndexedVertexPositions generate_n_gon(const glm::vec3 center, float radius, unsigned int num_sides) {
+    return {generate_n_gon_indices(num_sides), generate_n_gon_vertices(center, radius, num_sides)};
+}
+
+std::vector<unsigned int> generate_n_gon_indices(unsigned int num_sides) {
+    assert(num_sides >= 3);
+
+    std::vector<unsigned int> indices;
+    for (unsigned int i = 1; i <= num_sides; ++i) {
+        unsigned int next = (i % num_sides) + 1; // wrap around to 1 after num_sides
+        indices.push_back(0);                    // center
+        indices.push_back(i);                    // current outer vertex
+        indices.push_back(next);                 // next outer vertex
+    }
+    return indices;
 }
 
 /**
  *
  * @brief generate n equally spaced points on the unit circle
  *
- * Designed to work with glDrawArrays with a GL_TRIANGLE_FAN setting
- *
- * @TODO no longer needs to be called flattened.
  *
  */
-std::vector<glm::vec3> generate_n_gon_flattened_vertices(int n) {
-    assert(n >= 3);
-    float angle_increment = (2 * std::numbers::pi) / (float)n;
-    float curr_angle;
 
-    std::vector<glm::vec3> n_gon_points;
-    // less than or equal to n, places the initial point at the start and end which is what we want.
-    for (int i = 0; i <= n; i++) {
-        curr_angle = i * angle_increment;
-        glm::vec3 point(cos(curr_angle), sin(curr_angle), 0.0f);
-        n_gon_points.push_back(point);
+std::vector<glm::vec3> generate_n_gon_vertices(const glm::vec3 &center, float radius, unsigned int num_sides) {
+    assert(num_sides >= 3);
+
+    std::vector<glm::vec3> vertices;
+    vertices.push_back(center); // center point for triangle fan
+
+    float angle_increment = 2.0f * glm::pi<float>() / static_cast<float>(num_sides);
+
+    for (unsigned int i = 0; i < num_sides; ++i) {
+        float angle = i * angle_increment;
+        float x = center.x + radius * std::cos(angle);
+        float y = center.y + radius * std::sin(angle);
+        vertices.emplace_back(x, y, center.z);
     }
-    return n_gon_points;
+
+    return vertices;
 }
 
 draw_info::IndexedVertexPositions generate_annulus(float center_x, float center_y, float outer_radius,
