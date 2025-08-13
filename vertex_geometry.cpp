@@ -16,10 +16,6 @@
 
 #include <map>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
 namespace vertex_geometry {
 
 std::ostream &operator<<(std::ostream &os, const Rectangle &rect) {
@@ -628,7 +624,7 @@ draw_info::IndexedVertexPositions generate_cone_between(const glm::vec3 &base, c
     vertices.push_back(base); // base center vertex
 
     // generate base circle vertices
-    float angle_increment = 2.0f * M_PI / segments;
+    float angle_increment = 2.0f * std::numbers::pi / segments;
     for (int i = 0; i < segments; ++i) {
         float angle = i * angle_increment;
         glm::vec3 offset = radius * (cos(angle) * tangent + sin(angle) * bitangent);
@@ -660,7 +656,7 @@ draw_info::IVPNormals generate_torus(int major_segments, int minor_segments, flo
     std::vector<unsigned int> indices;
 
     for (int i = 0; i < major_segments; ++i) {
-        float major_angle = 2.0f * M_PI * i / major_segments;
+        float major_angle = 2.0f * std::numbers::pi * i / major_segments;
         glm::vec3 circle_center = glm::vec3(cos(major_angle), 0.0f, sin(major_angle)) * major_radius;
 
         glm::vec3 tangent = glm::vec3(-sin(major_angle), 0.0f, cos(major_angle)); // local X
@@ -668,7 +664,7 @@ draw_info::IVPNormals generate_torus(int major_segments, int minor_segments, flo
         glm::vec3 normal = glm::normalize(glm::cross(tangent, bitangent));        // local Z
 
         for (int j = 0; j < minor_segments; ++j) {
-            float minor_angle = 2.0f * M_PI * j / minor_segments;
+            float minor_angle = 2.0f * std::numbers::pi * j / minor_segments;
             float x = cos(minor_angle);
             float y = sin(minor_angle);
 
@@ -867,7 +863,7 @@ draw_info::IVPNormals generate_cone(int segments, float height, float radius) {
     std::vector<unsigned int> indices;
 
     float half_height = height / 2.0f;
-    float angle_increment = 2.0f * M_PI / segments;
+    float angle_increment = 2.0f * std::numbers::pi / segments;
 
     // Apex vertex (index 0)
     glm::vec3 apex = glm::vec3(0.0f, half_height, 0.0f);
@@ -935,7 +931,7 @@ draw_info::IndexedVertexPositions generate_cylinder_between(const glm::vec3 &p1,
     ortho = glm::normalize(ortho);
     glm::vec3 tangent = glm::cross(up, ortho);
 
-    float angle_increment = 2.0f * M_PI / segments;
+    float angle_increment = 2.0f * std::numbers::pi / segments;
 
     // top and bottom center vertices
     vertices.push_back(p2); // top center
@@ -988,7 +984,7 @@ draw_info::IVPNormals generate_cylinder(int segments, float height, float radius
     std::vector<glm::vec3> normals;
     std::vector<unsigned int> indices;
     float half_height = height / 2.0f;
-    float angle_increment = 2.0f * M_PI / segments;
+    float angle_increment = 2.0f * std::numbers::pi / segments;
 
     // Top center vertex
     vertices.push_back(glm::vec3(0.0f, half_height, 0.0f));
@@ -1403,7 +1399,7 @@ draw_info::IndexedVertexPositions generate_segmented_cylinder(const std::vector<
         glm::vec3 p1 = path[i + 1].first;
         glm::vec3 tangent = glm::normalize(p1 - p0);
 
-        float angle_increment = 2.0f * M_PI / segments;
+        float angle_increment = 2.0f * std::numbers::pi / segments;
 
         // Generate an arbitrary perpendicular vector using Gram-Schmidt
         glm::vec3 arbitrary = (std::abs(tangent.x) > 0.9f) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0);
@@ -1699,7 +1695,7 @@ draw_info::IndexedVertexPositions generate_annulus(float center_x, float center_
 std::vector<glm::vec3> generate_annulus_vertices(float center_x, float center_y, float outer_radius, float inner_radius,
                                                  int num_segments, float percent) {
     std::vector<glm::vec3> vertices;
-    float full_circle = 2.0f * M_PI;
+    float full_circle = 2.0f * std::numbers::pi;
     float angle_step = full_circle / num_segments;
 
     num_segments *= percent;
@@ -1749,7 +1745,7 @@ std::vector<glm::vec3> generate_star_vertices(float center_x, float center_y, fl
 
     int inner_radius_offset = 1;
 
-    float full_rotation = 2 * M_PI;
+    float full_rotation = 2 * std::numbers::pi;
 
     std::vector<glm::vec3> vertices;
     float angle_step = full_rotation / num_vertices_required;
@@ -1802,7 +1798,7 @@ std::vector<unsigned int> generate_star_indices(int num_star_tips, bool blunt_ti
 
 std::vector<glm::vec3> generate_fibonacci_sphere_vertices(int num_samples, float scale) {
     std::vector<glm::vec3> points;
-    float phi = M_PI * (std::sqrt(5.0) - 1.0);
+    float phi = std::numbers::pi * (std::sqrt(5.0) - 1.0);
 
     for (int i = 0; i < num_samples; i++) {
         float y = 1 - ((float)i / ((float)num_samples - 1)) * 2;
