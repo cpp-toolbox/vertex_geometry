@@ -575,6 +575,13 @@ std::vector<unsigned int> generate_square_indices() { return generate_rectangle_
 draw_info::IndexedVertexPositions generate_rectangle(float center_x, float center_y, float width, float height) {
     return {generate_rectangle_indices(), generate_rectangle_vertices(center_x, center_y, width, height)};
 }
+
+draw_info::IndexedVertexPositions generate_rectangle(float center_x, float center_y, float center_z, float width,
+                                                     float height) {
+    return {generate_rectangle_indices(),
+            generate_rectangle_vertices_with_z(center_x, center_y, center_z, width, height)};
+}
+
 std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_y, float width, float height) {
 
     float half_width = width / (float)2;

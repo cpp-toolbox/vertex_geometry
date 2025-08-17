@@ -174,6 +174,8 @@ draw_info::IndexedVertexPositions generate_rectangle(float center_x, float cente
 std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_y, float width, float height);
 // TODO: the below shouldn't exist, instead the above should just take in z, but i don't want to bust the api right
 // now
+draw_info::IndexedVertexPositions generate_rectangle(float center_x, float center_y, float center_z, float width,
+                                                     float height);
 std::vector<glm::vec3> generate_rectangle_vertices_with_z(float center_x, float center_y, float center_z, float width,
                                                           float height);
 std::vector<unsigned int> generate_rectangle_indices();
