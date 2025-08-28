@@ -319,6 +319,101 @@ Rectangle create_rectangle_from_center(const glm::vec3 &center, float width, flo
     return {center, width, height};
 }
 
+draw_info::IndexedVertexPositions AxisAlignedBoundingBox::get_ivp() {
+
+    auto corners = get_corners();
+
+    // Bottom face (z = min.z)
+    std::vector<glm::vec3> bottom_pts = {
+        corners[0], // (min.x, min.y, min.z)
+        corners[1], // (max.x, min.y, min.z)
+        corners[3], // (max.x, max.y, min.z)
+        corners[2]  // (min.x, max.y, min.z)
+    };
+
+    // Top face (z = max.z)
+    std::vector<glm::vec3> top_pts = {
+        corners[4], // (min.x, min.y, max.z)
+        corners[5], // (max.x, min.y, max.z)
+        corners[7], // (max.x, max.y, max.z)
+        corners[6]  // (min.x, max.y, max.z)
+    };
+
+    NGon bottom_ngon(bottom_pts, TriangulationMode::VertexFan);
+    NGon top_ngon(top_pts, TriangulationMode::VertexFan);
+
+    // Connect ngons into a prism IVP
+    return connect_ngons(bottom_ngon, top_ngon);
+}
+
+draw_info::IndexedVertexPositions triangulate_ngon(const NGon &ngon) {
+    const auto &pts = ngon.get_points();
+    std::vector<glm::vec3> xyz_positions(pts.begin(), pts.end());
+    std::vector<unsigned int> indices;
+
+    if (ngon.get_triangulation_mode() == TriangulationMode::CentralFan) {
+        glm::vec3 centroid(0.0f);
+        for (const auto &p : pts)
+            centroid += p;
+        centroid /= static_cast<float>(pts.size());
+
+        unsigned int center_index = static_cast<unsigned int>(xyz_positions.size());
+        xyz_positions.push_back(centroid);
+
+        for (std::size_t i = 0; i < pts.size(); ++i) {
+            unsigned int next = (i + 1) % pts.size();
+            indices.push_back(center_index);
+            indices.push_back(static_cast<unsigned int>(i));
+            indices.push_back(static_cast<unsigned int>(next));
+        }
+    } else { // VertexFan
+        for (std::size_t i = 1; i < pts.size() - 1; ++i) {
+            indices.push_back(0);
+            indices.push_back(static_cast<unsigned int>(i));
+            indices.push_back(static_cast<unsigned int>(i + 1));
+        }
+    }
+
+    return draw_info::IndexedVertexPositions(indices, xyz_positions);
+}
+
+// Connect two Ngons dynamically
+draw_info::IndexedVertexPositions connect_ngons(const NGon &a, const NGon &b) {
+    auto capA = triangulate_ngon(a);
+    auto capB = triangulate_ngon(b);
+
+    std::vector<glm::vec3> xyz_positions;
+    xyz_positions.reserve(capA.xyz_positions.size() + capB.xyz_positions.size());
+    xyz_positions.insert(xyz_positions.end(), capA.xyz_positions.begin(), capA.xyz_positions.end());
+    xyz_positions.insert(xyz_positions.end(), capB.xyz_positions.begin(), capB.xyz_positions.end());
+
+    std::vector<unsigned int> indices;
+    indices.insert(indices.end(), capA.indices.begin(), capA.indices.end());
+
+    unsigned int offsetB = static_cast<unsigned int>(capA.xyz_positions.size());
+    for (unsigned int idx : capB.indices)
+        indices.push_back(offsetB + idx);
+
+    // Sides
+    std::size_t N = a.size();
+    for (std::size_t i = 0; i < N; ++i) {
+        std::size_t next = (i + 1) % N;
+        unsigned int a0 = static_cast<unsigned int>(i);
+        unsigned int a1 = static_cast<unsigned int>(next);
+        unsigned int b0 = static_cast<unsigned int>(offsetB + i);
+        unsigned int b1 = static_cast<unsigned int>(offsetB + next);
+
+        indices.push_back(a0);
+        indices.push_back(a1);
+        indices.push_back(b1);
+        indices.push_back(a0);
+        indices.push_back(b1);
+        indices.push_back(b0);
+    }
+
+    return draw_info::IndexedVertexPositions(indices, xyz_positions);
+}
+
 Rectangle expand_rectangle(const Rectangle &rect, float x_expand, float y_expand) {
     Rectangle expanded_rect;
     expanded_rect.center = rect.center;
