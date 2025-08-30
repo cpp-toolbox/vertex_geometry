@@ -85,7 +85,7 @@ draw_info::IndexedVertexPositions text_grid_to_rect_grid(const std::string &text
                                                          const vertex_geometry::Rectangle bounding_rect);
 
 draw_info::IndexedVertexPositions generate_rectangle_between_2d(const glm::vec2 &p1, const glm::vec2 &p2,
-                                                                float thickness);
+                                                                float thickness = 0.01);
 
 Rectangle create_rectangle_from_corners(const glm::vec3 top_left, const glm::vec3 top_right,
                                         const glm::vec3 bottom_left, const glm::vec3 bottom_right);
@@ -147,6 +147,8 @@ draw_info::IVPNormals generate_terrain(float size_x = 100.0f, float size_z = 100
                                        int resolution_z = 50, float max_height = 5.0f, float base_height = 0.0f,
                                        int octaves = 4, float persistence = 0.5f, float scale = 50.0f,
                                        float seed = 0.0f);
+
+draw_info::IndexedVertexPositions connect_points_by_rectangles(const std::vector<glm::vec2> &points);
 
 draw_info::IndexedVertexPositions generate_function_visualization(std::function<glm::vec3(double)> f, double t_start,
                                                                   double t_end, double step_size,

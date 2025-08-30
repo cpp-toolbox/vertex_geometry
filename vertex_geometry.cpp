@@ -1382,6 +1382,22 @@ std::vector<std::pair<glm::vec3, glm::vec3>> sample_points_and_tangents(std::fun
     return samples;
 }
 
+draw_info::IndexedVertexPositions connect_points_by_rectangles(const std::vector<glm::vec2> &points) {
+    if (points.size() < 2)
+        return {};
+
+    std::vector<draw_info::IndexedVertexPositions> all_rects;
+    all_rects.reserve(points.size() - 1);
+
+    for (size_t i = 0; i < points.size() - 1; i++) {
+        const auto &pa = points[i];
+        const auto &pb = points[i + 1];
+        all_rects.push_back(generate_rectangle_between_2d(pa, pb, 0.001));
+    }
+
+    return merge_ivps(all_rects);
+}
+
 draw_info::IndexedVertexPositions generate_function_visualization(std::function<glm::vec3(double)> f, double t_start,
                                                                   double t_end, double step_size,
                                                                   double finite_diff_delta, float radius,
