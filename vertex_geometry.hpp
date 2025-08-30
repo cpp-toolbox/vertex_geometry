@@ -9,7 +9,93 @@
 
 #include "sbpt_generated_includes.hpp"
 
+// NOTE: One day I want to move grid font into this, but here all we want to do is just store more hpp/cpp files in this
+// one rather than forcing all that into this file as well.
+
 namespace vertex_geometry {
+
+enum class TriangulationMode {
+    CentralFan, // Triangulate from center point
+    VertexFan   // Triangulate from an existing vertex
+};
+
+class NGon {
+  public:
+    // Construct from explicit points
+    NGon(const std::vector<glm::vec3> &pts, TriangulationMode mode = TriangulationMode::CentralFan)
+        : points(pts), triangulation_mode(mode) {
+        if (points.size() < 3)
+            throw std::runtime_error("Ngon must have at least 3 vertices");
+    }
+
+    // Construct a regular ngon given radius, plane normal, and center offset
+    NGon(std::size_t n_vertices, float radius = 1.0f, const glm::vec3 &normal = glm::vec3(0, 0, 1),
+         const glm::vec3 &offset = glm::vec3(0, 0, 0), TriangulationMode mode = TriangulationMode::CentralFan)
+        : triangulation_mode(mode) {
+        if (n_vertices < 3)
+            throw std::runtime_error("Ngon must have at least 3 vertices");
+
+        points.resize(n_vertices);
+        glm::vec3 u, v;
+        make_basis_from_normal(normal, u, v);
+
+        float angle_step = glm::two_pi<float>() / static_cast<float>(n_vertices);
+        for (std::size_t i = 0; i < n_vertices; ++i) {
+            float angle = i * angle_step;
+            points[i] = offset + radius * (std::cos(angle) * u + std::sin(angle) * v);
+        }
+    }
+
+    const glm::vec3 &operator[](std::size_t index) const { return points[index]; }
+    glm::vec3 &operator[](std::size_t index) { return points[index]; }
+
+    std::size_t size() const { return points.size(); }
+    const std::vector<glm::vec3> &get_points() const { return points; }
+
+    TriangulationMode get_triangulation_mode() const { return triangulation_mode; }
+
+  private:
+    std::vector<glm::vec3> points;
+    TriangulationMode triangulation_mode;
+
+    static void make_basis_from_normal(const glm::vec3 &normal, glm::vec3 &u, glm::vec3 &v) {
+        glm::vec3 n = glm::normalize(normal);
+        glm::vec3 temp = (std::abs(n.x) > 0.9f) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0);
+        u = glm::normalize(glm::cross(n, temp));
+        v = glm::normalize(glm::cross(n, u));
+    }
+};
+
+class AxisAlignedBoundingBox {
+  public:
+    AxisAlignedBoundingBox(const std::vector<glm::vec3> &xyz_positions) {
+        min = glm::vec3(std::numeric_limits<float>::max());
+        max = glm::vec3(std::numeric_limits<float>::lowest());
+
+        for (const auto &v : xyz_positions) {
+            min = glm::min(min, v);
+            max = glm::max(max, v);
+        }
+    }
+
+    glm::vec3 min;
+    glm::vec3 max;
+
+    std::array<glm::vec3, 8> get_corners() const {
+        return {
+            glm::vec3(min.x, min.y, min.z), glm::vec3(max.x, min.y, min.z), glm::vec3(min.x, max.y, min.z),
+            glm::vec3(max.x, max.y, min.z), glm::vec3(min.x, min.y, max.z), glm::vec3(max.x, min.y, max.z),
+            glm::vec3(min.x, max.y, max.z), glm::vec3(max.x, max.y, max.z),
+        };
+    }
+
+    draw_info::IndexedVertexPositions get_ivp();
+};
+
+draw_info::IndexedVertexPositions triangulate_ngon(const NGon &ngon);
+draw_info::IndexedVertexPositions connect_ngons(const NGon &a, const NGon &b);
+
+// Triangulate any Ngon dynamically
 
 class Rectangle {
   public:
@@ -38,19 +124,6 @@ Rectangle shrink_rectangle(const Rectangle &rect, float x_shrink, float y_shrink
 Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float x_shrink, float y_shrink = 1);
 Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset);
 Rectangle get_bounding_rectangle(const std::vector<Rectangle> &rectangles);
-
-/*
- *       |
- *       |
- *       |
- *       |
- *       |
- *       |
- *       |
- *       |
- *       |
- *       |
- */
 
 class Grid {
   public:
