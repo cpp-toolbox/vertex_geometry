@@ -68,6 +68,7 @@ class NGon {
 
 class AxisAlignedBoundingBox {
   public:
+    AxisAlignedBoundingBox() {};
     AxisAlignedBoundingBox(const std::vector<glm::vec3> &xyz_positions) {
         min = glm::vec3(std::numeric_limits<float>::max());
         max = glm::vec3(std::numeric_limits<float>::lowest());
@@ -90,6 +91,30 @@ class AxisAlignedBoundingBox {
     }
 
     draw_info::IndexedVertexPositions get_ivp();
+};
+
+class AxisAlignedBoundingBox2D {
+  public:
+    AxisAlignedBoundingBox2D(const std::vector<glm::vec2> &xy_positions) {
+        min = glm::vec2(std::numeric_limits<float>::max());
+        max = glm::vec2(std::numeric_limits<float>::lowest());
+
+        for (const auto &v : xy_positions) {
+            min = glm::min(min, v);
+            max = glm::max(max, v);
+        }
+    }
+
+    glm::vec2 min;
+    glm::vec2 max;
+
+    // Returns the 4 corners of the 2D bounding box
+    std::array<glm::vec2, 4> get_corners() const {
+        return {glm::vec2(min.x, min.y), glm::vec2(max.x, min.y), glm::vec2(min.x, max.y), glm::vec2(max.x, max.y)};
+    }
+
+    // LATER
+    // draw_info::IndexedVertexPositions get_ivp();
 };
 
 draw_info::IndexedVertexPositions triangulate_ngon(const NGon &ngon);
