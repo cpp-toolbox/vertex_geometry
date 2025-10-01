@@ -6,6 +6,7 @@
 #include <cmath>
 #include <functional>
 #include <stdexcept>
+#include <array>
 
 #include "sbpt_generated_includes.hpp"
 
