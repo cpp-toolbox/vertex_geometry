@@ -320,7 +320,8 @@ std::vector<glm::vec3> generate_annulus_vertices(float center_x, float center_y,
                                                  int num_segments, float percent = 1);
 std::vector<unsigned int> generate_annulus_indices(int num_segments, float percent = 1);
 
-// points are the points of the star
+draw_info::IndexedVertexPositions generate_star(float center_x, float center_y, float outer_radius, float inner_radius,
+                                                int num_star_tips, bool blunt_tips = false);
 std::vector<glm::vec3> generate_star_vertices(float center_x, float center_y, float outer_radius, float inner_radius,
                                               int num_star_tips, bool blunt_tips = false);
 std::vector<unsigned int> generate_star_indices(int num_star_tips, bool blunt_tips);

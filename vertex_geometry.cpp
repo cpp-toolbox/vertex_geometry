@@ -1855,6 +1855,14 @@ std::vector<unsigned int> generate_annulus_indices(int num_segments, float perce
     return indices;
 }
 
+draw_info::IndexedVertexPositions generate_star(float center_x, float center_y, float outer_radius, float inner_radius,
+                                                int num_star_tips, bool blunt_tips) {
+    return {
+        generate_star_indices(num_star_tips, blunt_tips),
+        generate_star_vertices(center_x, center_y, outer_radius, inner_radius, num_star_tips, blunt_tips),
+    };
+}
+
 std::vector<glm::vec3> generate_star_vertices(float center_x, float center_y, float outer_radius, float inner_radius,
                                               int num_star_tips, bool blunt_tips) {
 
