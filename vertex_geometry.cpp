@@ -71,8 +71,8 @@ std::vector<Rectangle> get_rects_intersecting_circle(const Grid &grid, float cx,
     return result;
 }
 
-draw_info::IndexedVertexPositions text_grid_to_rect_grid(const std::string &text_grid,
-                                                         const vertex_geometry::Rectangle bounding_rect) {
+draw_info::IndexedVertexPositions binary_text_grid_to_rect_grid(const std::string &text_grid,
+                                                                const vertex_geometry::Rectangle bounding_rect) {
     unsigned int rows = 0;
     unsigned int cols = 0;
 

@@ -67,9 +67,29 @@ class NGon {
     }
 };
 
+/**
+ * @brief Represents an axis-aligned bounding box (AABB) in 3D space.
+ *
+ * The AABB is defined by its minimum and maximum corner points.
+ * It provides utility methods to retrieve corner positions,
+ * projected positions (e.g., max X/Y with z=0), and a conversion to
+ * drawable vertex data.
+ */
 class AxisAlignedBoundingBox {
   public:
-    AxisAlignedBoundingBox() {};
+    /**
+     * @brief Default constructor. Creates an uninitialized bounding box.
+     */
+    AxisAlignedBoundingBox() {}
+
+    /**
+     * @brief Constructs an axis-aligned bounding box from a set of 3D points.
+     *
+     * Iterates over all given positions to compute the minimum and maximum
+     * extents of the box along each axis.
+     *
+     * @param xyz_positions A list of 3D positions used to compute the bounding box.
+     */
     AxisAlignedBoundingBox(const std::vector<glm::vec3> &xyz_positions) {
         min = glm::vec3(std::numeric_limits<float>::max());
         max = glm::vec3(std::numeric_limits<float>::lowest());
@@ -80,17 +100,57 @@ class AxisAlignedBoundingBox {
         }
     }
 
+    /** @brief The minimum corner of the bounding box. */
     glm::vec3 min;
+
+    /** @brief The maximum corner of the bounding box. */
     glm::vec3 max;
 
+    /**
+     * @brief Returns the 8 corner points of the bounding box.
+     *
+     * The corners are returned in the following order:
+     * (min.x, min.y, min.z), (max.x, min.y, min.z),
+     * (min.x, max.y, min.z), (max.x, max.y, min.z),
+     * (min.x, min.y, max.z), (max.x, min.y, max.z),
+     * (min.x, max.y, max.z), (max.x, max.y, max.z)
+     *
+     * @return An array containing all 8 corner positions.
+     */
     std::array<glm::vec3, 8> get_corners() const {
-        return {
-            glm::vec3(min.x, min.y, min.z), glm::vec3(max.x, min.y, min.z), glm::vec3(min.x, max.y, min.z),
-            glm::vec3(max.x, max.y, min.z), glm::vec3(min.x, min.y, max.z), glm::vec3(max.x, min.y, max.z),
-            glm::vec3(min.x, max.y, max.z), glm::vec3(max.x, max.y, max.z),
-        };
+        return {glm::vec3(min.x, min.y, min.z), glm::vec3(max.x, min.y, min.z), glm::vec3(min.x, max.y, min.z),
+                glm::vec3(max.x, max.y, min.z), glm::vec3(min.x, min.y, max.z), glm::vec3(max.x, min.y, max.z),
+                glm::vec3(min.x, max.y, max.z), glm::vec3(max.x, max.y, max.z)};
     }
 
+    /**
+     * @brief Returns the position with the maximum X and Y values.
+     * @return A 3D position with (max.x, max.y, 0.0f).
+     */
+    glm::vec3 get_max_xy_position() const { return glm::vec3(max.x, max.y, 0.0f); }
+
+    /**
+     * @brief Returns the position with the minimum X and Y values.
+     * @return A 3D position with (min.x, min.y, 0.0f).
+     */
+    glm::vec3 get_min_xy_position() const { return glm::vec3(min.x, min.y, 0.0f); }
+
+    /**
+     * @brief Returns the position with the maximum X and minimum Y values.
+     * @return A 3D position with (max.x, min.y, 0.0f).
+     */
+    glm::vec3 get_maxx_miny_position() const { return glm::vec3(max.x, min.y, 0.0f); }
+
+    /**
+     * @brief Returns the position with the minimum X and maximum Y values.
+     * @return A 3D position with (min.x, max.y, 0.0f).
+     */
+    glm::vec3 get_minx_maxy_position() const { return glm::vec3(min.x, max.y, 0.0f); }
+
+    /**
+     * @brief Converts the bounding box into indexed vertex positions for drawing.
+     * @return A draw_info::IndexedVertexPositions object representing the box geometry.
+     */
     draw_info::IndexedVertexPositions get_ivp();
 };
 
@@ -180,8 +240,18 @@ class Grid {
 bool circle_intersects_rect(float cx, float cy, float radius, const Rectangle &rect);
 std::vector<Rectangle> get_rects_intersecting_circle(const Grid &grid, float cx, float cy, float radius);
 
-draw_info::IndexedVertexPositions text_grid_to_rect_grid(const std::string &text_grid,
-                                                         const vertex_geometry::Rectangle bounding_rect);
+/**
+ * a binary text grid is a string with newlines where each line has the exact same length forming a sort of 2d grid. The
+ * elements in the grid are binary, an asterisk indicates that pixel is "on", and a space indicates that it is off.
+ *
+ * This function takes in a binary text grid, and then constructs an equivalent grid of squares wherever the binary text
+ * grid is on
+ *
+ * The purpose of this function is to allow you to make simple pixel art or fonts without having to use images
+ *
+ */
+draw_info::IndexedVertexPositions binary_text_grid_to_rect_grid(const std::string &text_grid,
+                                                                const vertex_geometry::Rectangle bounding_rect);
 
 draw_info::IndexedVertexPositions generate_rectangle_between_2d(const glm::vec2 &p1, const glm::vec2 &p2,
                                                                 float thickness = 0.01);
