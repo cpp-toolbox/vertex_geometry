@@ -191,23 +191,62 @@ class Rectangle {
     glm::vec3 center; // Center position
     float width;      // Width of the rectangle
     float height;     // Height of the rectangle
+    // TODO: this needs to be renamed get_ivp right?
     draw_info::IndexedVertexPositions get_ivs() const;
     friend std::ostream &operator<<(std::ostream &os, const Rectangle &rect);
 
     glm::vec3 get_top_left() const;
     glm::vec3 get_top_center() const;
     glm::vec3 get_top_right() const;
-    glm::vec3 get_center_left() const;
-    glm::vec3 get_center_right() const;
+    glm::vec3 get_left_center() const;
+    glm::vec3 get_right_center() const;
     glm::vec3 get_bottom_left() const;
     glm::vec3 get_bottom_center() const;
     glm::vec3 get_bottom_right() const;
 };
 
 Rectangle expand_rectangle(const Rectangle &rect, float x_expand, float y_expand);
-Rectangle shrink_rectangle(const Rectangle &rect, float x_shrink, float y_shrink);
-// this function scales a rectangle keeping the left side in place
+
+/**
+ * @brief Returns a new rectangle inset by the specified amounts along each axis.
+ *
+ * This function reduces the width and height of the given rectangle by twice the provided
+ * inset amounts (`x_inset` and `y_inset`), ensuring that the resulting dimensions
+ * are never negative. The rectangle remains centered at the same position as the original.
+ *
+ * @param rect The original rectangle to inset.
+ * @param x_inset The amount to inset the rectangle on each side along the x-axis.
+ * @param y_inset The amount to inset the rectangle on each side along the y-axis.
+ * @return A new `Rectangle` instance representing the inset rectangle.
+ *
+ * @note If the inset amount exceeds half the original size, the corresponding dimension
+ * will be clamped to zero.
+ */
+Rectangle inset_rectangle(const Rectangle &rect, float x_inset, float y_inset);
+
+// TODO: there needs to be a scale from position function at some point.
+/// @brief scales a rectangle uniformly by scale from its center point. Could we just add a transform to rect?
+Rectangle scale_rectangle(const Rectangle &rect, float scale);
+Rectangle scale_rectangle(const Rectangle &rect, float x_scale, float y_scale);
+/// @brief scales a rectangle keeping the left side in place
+Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float shrink);
+Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float x_shrink, float y_shrink);
 Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float x_shrink, float y_shrink = 1);
+Rectangle scale_rectangle_from_top_side(const Rectangle &rect, float x_shrink, float y_shrink);
+Rectangle scale_rectangle_from_top_left(const Rectangle &rect, float x_shrink, float y_shrink);
+Rectangle scale_rectangle_from_bottom_left(const Rectangle &rect, float x_shrink, float y_shrink);
+/**
+ * @brief Slides a rectangle by a given offset in terms of its width and height.
+ *
+ * This function creates a new rectangle based on the input rectangle and moves
+ * its center by the specified offsets. The offsets are multiplied by the
+ * rectangle's width and height respectively.
+ *
+ * @param rect The original rectangle to slide.
+ * @param x_offset The horizontal offset, multiplied by the rectangle's width.
+ * @param y_offset The vertical offset, multiplied by the rectangle's height.
+ * @return Rectangle A new rectangle with its center moved by the specified offsets.
+ */
 Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset);
 Rectangle get_bounding_rectangle(const std::vector<Rectangle> &rectangles);
 
@@ -259,24 +298,122 @@ draw_info::IndexedVertexPositions generate_rectangle_between_2d(const glm::vec2 
 Rectangle create_rectangle_from_corners(const glm::vec3 top_left, const glm::vec3 top_right,
                                         const glm::vec3 bottom_left, const glm::vec3 bottom_right);
 Rectangle create_rectangle(float x_pos, float y_pos, float width, float height);
+
+/**
+ * @brief Creates a rectangle from a specified reference point and size.
+ *
+ * These functions create a Rectangle by specifying a reference point on the rectangle
+ * (such as a corner or an edge center) and the rectangle's width and height. The rectangle's
+ * internal center position is computed based on the reference point:
+ *
+ * @param reference_point The reference point (corner or edge center) to position the rectangle.
+ * @param width The width of the rectangle.
+ * @param height The height of the rectangle.
+ * @return Rectangle The constructed rectangle with its center at the calculated position.
+ *
+ * @note the naming convention is (top/bottom)_(left/right) or (left/right/top/bottom)_center
+ */
 Rectangle create_rectangle_from_top_left(const glm::vec3 &top_left, float width, float height);
 Rectangle create_rectangle_from_top_right(const glm::vec3 &top_right, float width, float height);
 Rectangle create_rectangle_from_bottom_left(const glm::vec3 &bottom_left, float width, float height);
 Rectangle create_rectangle_from_bottom_right(const glm::vec3 &bottom_right, float width, float height);
-Rectangle create_rectangle_from_center_left(const glm::vec3 &center_left, float width, float height);
+Rectangle create_rectangle_from_left_center(const glm::vec3 &center_left, float width, float height);
+Rectangle create_rectangle_from_top_center(const glm::vec3 &top_center, float width, float height);
+Rectangle create_rectangle_from_bottom_center(const glm::vec3 &bottom_center, float width, float height);
+Rectangle create_rectangle_from_right_center(const glm::vec3 &center_right, float width, float height);
 
 Rectangle create_rectangle_from_center(const glm::vec3 &center, float width, float height);
 
-std::vector<Rectangle> subdivide_rectangle(const Rectangle &rect, unsigned int num_subdivisions, bool vertical = true);
+enum class CutDirection {
+    vertical,
+    horizontal,
+};
 
-// when you subdivide vertically think of it as cutting up and down like lines in a book
+/**
+ * @brief Subdivides a rectangle into a number of equally sized sub-rectangles.
+ *
+ * Depending on the `vertical` parameter, the rectangle is split either along the vertical axis:
+ *
+ * @code
+ *
+ * +------------------------+
+ * |  0  |  1   |  2  |  3  |
+ * +------------------------+
+ *
+ * @endcode
+ *
+ * (the cuts made are vertical)
+ *
+ * and when vertical is false we get horizontal cuts like this
+ *
+ * @code
+ *
+ * +---+
+ * | 0 |
+ * |---|
+ * | 1 |
+ * |---|
+ * | 2 |
+ * |---|
+ * | 3 |
+ * |---|
+ * | 4 |
+ * +---+
+ *
+ * @endcode
+ *
+ * @param rect The rectangle to subdivide.
+ * @param num_subdivisions The number of sub-rectangles to create.
+ * @param vertical If true, subdivision is vertical; otherwise, horizontal. Default is true.
+ * @return A vector of `Rectangle` instances representing the subdivided regions.
+ *
+ * @todo create an enum called cut direction which is either vertical or horizontal and use that instead.
+ */
+std::vector<Rectangle> subdivide_rectangle(const Rectangle &rect, unsigned int num_subdivisions,
+                                           CutDirection cut_direction = CutDirection::vertical);
+
+/**
+ * @brief Subdivides a rectangle vertically according to specified weights.
+ *
+ * Each weight in `weights` represents the relative height of a sub-rectangle. The resulting
+ * sub-rectangles are stacked vertically, maintaining the same width as the original rectangle.
+ *
+ * @param rect The rectangle to subdivide.
+ * @param weights A vector of weights defining the relative heights of each sub-rectangle.
+ * @return A vector of `Rectangle` instances representing the vertically subdivided regions.
+ *
+ * @note Think of vertical subdivision as cutting lines of text in a book.
+ */
 std::vector<Rectangle> vertical_weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights);
 
-// when you subdivide horizontally you're cutting a carrot on a cutting board
+/**
+ * @brief Subdivides a rectangle horizontally according to specified weights.
+ *
+ * Each weight in `weights` represents the relative width of a sub-rectangle. The resulting
+ * sub-rectangles are laid out horizontally, maintaining the same height as the original rectangle.
+ *
+ * @param rect The rectangle to subdivide.
+ * @param weights A vector of weights defining the relative widths of each sub-rectangle.
+ * @return A vector of `Rectangle` instances representing the horizontally subdivided regions.
+ *
+ * @note Think of horizontal subdivision as slicing a carrot on a cutting board.
+ */
 std::vector<Rectangle> horizontal_weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights);
 
+/**
+ * @brief Subdivides a rectangle according to specified weights, either vertically or horizontally.
+ *
+ * This function combines the behavior of `vertical_weighted_subdivision` and
+ * `horizontal_weighted_subdivision` depending on the `vertical` flag. Each weight defines
+ * the relative size of the corresponding sub-rectangle along the chosen axis.
+ *
+ * @param rect The rectangle to subdivide.
+ * @param weights A vector of weights defining the relative sizes of sub-rectangles.
+ * @param vertical If true, subdivision is vertical; otherwise, horizontal. Default is true.
+ * @return A vector of `Rectangle` instances representing the weighted subdivided regions.
+ */
 std::vector<Rectangle> weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights,
-                                            bool vertical = true);
+                                            CutDirection cut_direction = CutDirection::vertical);
 
 std::vector<glm::vec3> generate_rectangle_normals();
 std::vector<Rectangle> generate_grid_rectangles(const glm::vec3 &center_position, float base_width, float base_height,
