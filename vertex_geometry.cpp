@@ -2039,6 +2039,7 @@ draw_info::IndexedVertexPositions generate_3d_arrow(const glm::vec3 &start, cons
  * {0, 1, 2}, {2, 1, 3}, {4, 5, 6}
  *
  * \author cuppajoeman (2024)
+ * \note this was used as a stepping stone for me to figure out how ivps work
  */
 
 std::vector<glm::vec3> generate_arrow_vertices(glm::vec2 start, glm::vec2 end, float stem_thickness, float tip_length) {
@@ -2097,6 +2098,11 @@ std::vector<glm::vec3> generate_arrow_vertices(glm::vec2 start, glm::vec2 end, f
 }
 
 std::vector<unsigned int> generate_arrow_indices() { return {0, 1, 2, 2, 1, 3, 4, 5, 6}; }
+
+draw_info::IndexedVertexPositions generate_2d_arrow(glm::vec2 start, glm::vec2 end, float stem_thickness,
+                                                    float tip_length) {
+    return {generate_arrow_indices(), generate_arrow_vertices(start, end, stem_thickness, tip_length)};
+}
 
 void scale_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &scale_vector, const glm::vec3 &origin) {
     for (auto &vertex : vertices) {
