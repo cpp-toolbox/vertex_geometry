@@ -6,6 +6,7 @@
 #include <cmath>
 #include <functional>
 #include <stdexcept>
+#include <array>
 
 #include "sbpt_generated_includes.hpp"
 
@@ -66,9 +67,29 @@ class NGon {
     }
 };
 
+/**
+ * @brief Represents an axis-aligned bounding box (AABB) in 3D space.
+ *
+ * The AABB is defined by its minimum and maximum corner points.
+ * It provides utility methods to retrieve corner positions,
+ * projected positions (e.g., max X/Y with z=0), and a conversion to
+ * drawable vertex data.
+ */
 class AxisAlignedBoundingBox {
   public:
-    AxisAlignedBoundingBox() {};
+    /**
+     * @brief Default constructor. Creates an uninitialized bounding box.
+     */
+    AxisAlignedBoundingBox() {}
+
+    /**
+     * @brief Constructs an axis-aligned bounding box from a set of 3D points.
+     *
+     * Iterates over all given positions to compute the minimum and maximum
+     * extents of the box along each axis.
+     *
+     * @param xyz_positions A list of 3D positions used to compute the bounding box.
+     */
     AxisAlignedBoundingBox(const std::vector<glm::vec3> &xyz_positions) {
         min = glm::vec3(std::numeric_limits<float>::max());
         max = glm::vec3(std::numeric_limits<float>::lowest());
@@ -79,17 +100,57 @@ class AxisAlignedBoundingBox {
         }
     }
 
+    /** @brief The minimum corner of the bounding box. */
     glm::vec3 min;
+
+    /** @brief The maximum corner of the bounding box. */
     glm::vec3 max;
 
+    /**
+     * @brief Returns the 8 corner points of the bounding box.
+     *
+     * The corners are returned in the following order:
+     * (min.x, min.y, min.z), (max.x, min.y, min.z),
+     * (min.x, max.y, min.z), (max.x, max.y, min.z),
+     * (min.x, min.y, max.z), (max.x, min.y, max.z),
+     * (min.x, max.y, max.z), (max.x, max.y, max.z)
+     *
+     * @return An array containing all 8 corner positions.
+     */
     std::array<glm::vec3, 8> get_corners() const {
-        return {
-            glm::vec3(min.x, min.y, min.z), glm::vec3(max.x, min.y, min.z), glm::vec3(min.x, max.y, min.z),
-            glm::vec3(max.x, max.y, min.z), glm::vec3(min.x, min.y, max.z), glm::vec3(max.x, min.y, max.z),
-            glm::vec3(min.x, max.y, max.z), glm::vec3(max.x, max.y, max.z),
-        };
+        return {glm::vec3(min.x, min.y, min.z), glm::vec3(max.x, min.y, min.z), glm::vec3(min.x, max.y, min.z),
+                glm::vec3(max.x, max.y, min.z), glm::vec3(min.x, min.y, max.z), glm::vec3(max.x, min.y, max.z),
+                glm::vec3(min.x, max.y, max.z), glm::vec3(max.x, max.y, max.z)};
     }
 
+    /**
+     * @brief Returns the position with the maximum X and Y values.
+     * @return A 3D position with (max.x, max.y, 0.0f).
+     */
+    glm::vec3 get_max_xy_position() const { return glm::vec3(max.x, max.y, 0.0f); }
+
+    /**
+     * @brief Returns the position with the minimum X and Y values.
+     * @return A 3D position with (min.x, min.y, 0.0f).
+     */
+    glm::vec3 get_min_xy_position() const { return glm::vec3(min.x, min.y, 0.0f); }
+
+    /**
+     * @brief Returns the position with the maximum X and minimum Y values.
+     * @return A 3D position with (max.x, min.y, 0.0f).
+     */
+    glm::vec3 get_maxx_miny_position() const { return glm::vec3(max.x, min.y, 0.0f); }
+
+    /**
+     * @brief Returns the position with the minimum X and maximum Y values.
+     * @return A 3D position with (min.x, max.y, 0.0f).
+     */
+    glm::vec3 get_minx_maxy_position() const { return glm::vec3(min.x, max.y, 0.0f); }
+
+    /**
+     * @brief Converts the bounding box into indexed vertex positions for drawing.
+     * @return A draw_info::IndexedVertexPositions object representing the box geometry.
+     */
     draw_info::IndexedVertexPositions get_ivp();
 };
 
@@ -130,23 +191,62 @@ class Rectangle {
     glm::vec3 center; // Center position
     float width;      // Width of the rectangle
     float height;     // Height of the rectangle
+    // TODO: this needs to be renamed get_ivp right?
     draw_info::IndexedVertexPositions get_ivs() const;
     friend std::ostream &operator<<(std::ostream &os, const Rectangle &rect);
 
     glm::vec3 get_top_left() const;
     glm::vec3 get_top_center() const;
     glm::vec3 get_top_right() const;
-    glm::vec3 get_center_left() const;
-    glm::vec3 get_center_right() const;
+    glm::vec3 get_left_center() const;
+    glm::vec3 get_right_center() const;
     glm::vec3 get_bottom_left() const;
     glm::vec3 get_bottom_center() const;
     glm::vec3 get_bottom_right() const;
 };
 
 Rectangle expand_rectangle(const Rectangle &rect, float x_expand, float y_expand);
-Rectangle shrink_rectangle(const Rectangle &rect, float x_shrink, float y_shrink);
-// this function scales a rectangle keeping the left side in place
+
+/**
+ * @brief Returns a new rectangle inset by the specified amounts along each axis.
+ *
+ * This function reduces the width and height of the given rectangle by twice the provided
+ * inset amounts (`x_inset` and `y_inset`), ensuring that the resulting dimensions
+ * are never negative. The rectangle remains centered at the same position as the original.
+ *
+ * @param rect The original rectangle to inset.
+ * @param x_inset The amount to inset the rectangle on each side along the x-axis.
+ * @param y_inset The amount to inset the rectangle on each side along the y-axis.
+ * @return A new `Rectangle` instance representing the inset rectangle.
+ *
+ * @note If the inset amount exceeds half the original size, the corresponding dimension
+ * will be clamped to zero.
+ */
+Rectangle inset_rectangle(const Rectangle &rect, float x_inset, float y_inset);
+
+// TODO: there needs to be a scale from position function at some point.
+/// @brief scales a rectangle uniformly by scale from its center point. Could we just add a transform to rect?
+Rectangle scale_rectangle(const Rectangle &rect, float scale);
+Rectangle scale_rectangle(const Rectangle &rect, float x_scale, float y_scale);
+/// @brief scales a rectangle keeping the left side in place
+Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float shrink);
+Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float x_shrink, float y_shrink);
 Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float x_shrink, float y_shrink = 1);
+Rectangle scale_rectangle_from_top_side(const Rectangle &rect, float x_shrink, float y_shrink);
+Rectangle scale_rectangle_from_top_left(const Rectangle &rect, float x_shrink, float y_shrink);
+Rectangle scale_rectangle_from_bottom_left(const Rectangle &rect, float x_shrink, float y_shrink);
+/**
+ * @brief Slides a rectangle by a given offset in terms of its width and height.
+ *
+ * This function creates a new rectangle based on the input rectangle and moves
+ * its center by the specified offsets. The offsets are multiplied by the
+ * rectangle's width and height respectively.
+ *
+ * @param rect The original rectangle to slide.
+ * @param x_offset The horizontal offset, multiplied by the rectangle's width.
+ * @param y_offset The vertical offset, multiplied by the rectangle's height.
+ * @return Rectangle A new rectangle with its center moved by the specified offsets.
+ */
 Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset);
 Rectangle get_bounding_rectangle(const std::vector<Rectangle> &rectangles);
 
@@ -179,8 +279,18 @@ class Grid {
 bool circle_intersects_rect(float cx, float cy, float radius, const Rectangle &rect);
 std::vector<Rectangle> get_rects_intersecting_circle(const Grid &grid, float cx, float cy, float radius);
 
-draw_info::IndexedVertexPositions text_grid_to_rect_grid(const std::string &text_grid,
-                                                         const vertex_geometry::Rectangle bounding_rect);
+/**
+ * a binary text grid is a string with newlines where each line has the exact same length forming a sort of 2d grid. The
+ * elements in the grid are binary, an asterisk indicates that pixel is "on", and a space indicates that it is off.
+ *
+ * This function takes in a binary text grid, and then constructs an equivalent grid of squares wherever the binary text
+ * grid is on
+ *
+ * The purpose of this function is to allow you to make simple pixel art or fonts without having to use images
+ *
+ */
+draw_info::IndexedVertexPositions binary_text_grid_to_rect_grid(const std::string &text_grid,
+                                                                const vertex_geometry::Rectangle bounding_rect);
 
 draw_info::IndexedVertexPositions generate_rectangle_between_2d(const glm::vec2 &p1, const glm::vec2 &p2,
                                                                 float thickness = 0.01);
@@ -188,24 +298,122 @@ draw_info::IndexedVertexPositions generate_rectangle_between_2d(const glm::vec2 
 Rectangle create_rectangle_from_corners(const glm::vec3 top_left, const glm::vec3 top_right,
                                         const glm::vec3 bottom_left, const glm::vec3 bottom_right);
 Rectangle create_rectangle(float x_pos, float y_pos, float width, float height);
+
+/**
+ * @brief Creates a rectangle from a specified reference point and size.
+ *
+ * These functions create a Rectangle by specifying a reference point on the rectangle
+ * (such as a corner or an edge center) and the rectangle's width and height. The rectangle's
+ * internal center position is computed based on the reference point:
+ *
+ * @param reference_point The reference point (corner or edge center) to position the rectangle.
+ * @param width The width of the rectangle.
+ * @param height The height of the rectangle.
+ * @return Rectangle The constructed rectangle with its center at the calculated position.
+ *
+ * @note the naming convention is (top/bottom)_(left/right) or (left/right/top/bottom)_center
+ */
 Rectangle create_rectangle_from_top_left(const glm::vec3 &top_left, float width, float height);
 Rectangle create_rectangle_from_top_right(const glm::vec3 &top_right, float width, float height);
 Rectangle create_rectangle_from_bottom_left(const glm::vec3 &bottom_left, float width, float height);
 Rectangle create_rectangle_from_bottom_right(const glm::vec3 &bottom_right, float width, float height);
-Rectangle create_rectangle_from_center_left(const glm::vec3 &center_left, float width, float height);
+Rectangle create_rectangle_from_left_center(const glm::vec3 &center_left, float width, float height);
+Rectangle create_rectangle_from_top_center(const glm::vec3 &top_center, float width, float height);
+Rectangle create_rectangle_from_bottom_center(const glm::vec3 &bottom_center, float width, float height);
+Rectangle create_rectangle_from_right_center(const glm::vec3 &center_right, float width, float height);
 
 Rectangle create_rectangle_from_center(const glm::vec3 &center, float width, float height);
 
-std::vector<Rectangle> subdivide_rectangle(const Rectangle &rect, unsigned int num_subdivisions, bool vertical = true);
+enum class CutDirection {
+    vertical,
+    horizontal,
+};
 
-// when you subdivide vertically think of it as cutting up and down like lines in a book
+/**
+ * @brief Subdivides a rectangle into a number of equally sized sub-rectangles.
+ *
+ * Depending on the `vertical` parameter, the rectangle is split either along the vertical axis:
+ *
+ * @code
+ *
+ * +------------------------+
+ * |  0  |  1   |  2  |  3  |
+ * +------------------------+
+ *
+ * @endcode
+ *
+ * (the cuts made are vertical)
+ *
+ * and when vertical is false we get horizontal cuts like this
+ *
+ * @code
+ *
+ * +---+
+ * | 0 |
+ * |---|
+ * | 1 |
+ * |---|
+ * | 2 |
+ * |---|
+ * | 3 |
+ * |---|
+ * | 4 |
+ * +---+
+ *
+ * @endcode
+ *
+ * @param rect The rectangle to subdivide.
+ * @param num_subdivisions The number of sub-rectangles to create.
+ * @param vertical If true, subdivision is vertical; otherwise, horizontal. Default is true.
+ * @return A vector of `Rectangle` instances representing the subdivided regions.
+ *
+ * @todo create an enum called cut direction which is either vertical or horizontal and use that instead.
+ */
+std::vector<Rectangle> subdivide_rectangle(const Rectangle &rect, unsigned int num_subdivisions,
+                                           CutDirection cut_direction = CutDirection::vertical);
+
+/**
+ * @brief Subdivides a rectangle vertically according to specified weights.
+ *
+ * Each weight in `weights` represents the relative height of a sub-rectangle. The resulting
+ * sub-rectangles are stacked vertically, maintaining the same width as the original rectangle.
+ *
+ * @param rect The rectangle to subdivide.
+ * @param weights A vector of weights defining the relative heights of each sub-rectangle.
+ * @return A vector of `Rectangle` instances representing the vertically subdivided regions.
+ *
+ * @note Think of vertical subdivision as cutting lines of text in a book.
+ */
 std::vector<Rectangle> vertical_weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights);
 
-// when you subdivide horizontally you're cutting a carrot on a cutting board
+/**
+ * @brief Subdivides a rectangle horizontally according to specified weights.
+ *
+ * Each weight in `weights` represents the relative width of a sub-rectangle. The resulting
+ * sub-rectangles are laid out horizontally, maintaining the same height as the original rectangle.
+ *
+ * @param rect The rectangle to subdivide.
+ * @param weights A vector of weights defining the relative widths of each sub-rectangle.
+ * @return A vector of `Rectangle` instances representing the horizontally subdivided regions.
+ *
+ * @note Think of horizontal subdivision as slicing a carrot on a cutting board.
+ */
 std::vector<Rectangle> horizontal_weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights);
 
+/**
+ * @brief Subdivides a rectangle according to specified weights, either vertically or horizontally.
+ *
+ * This function combines the behavior of `vertical_weighted_subdivision` and
+ * `horizontal_weighted_subdivision` depending on the `vertical` flag. Each weight defines
+ * the relative size of the corresponding sub-rectangle along the chosen axis.
+ *
+ * @param rect The rectangle to subdivide.
+ * @param weights A vector of weights defining the relative sizes of sub-rectangles.
+ * @param vertical If true, subdivision is vertical; otherwise, horizontal. Default is true.
+ * @return A vector of `Rectangle` instances representing the weighted subdivided regions.
+ */
 std::vector<Rectangle> weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights,
-                                            bool vertical = true);
+                                            CutDirection cut_direction = CutDirection::vertical);
 
 std::vector<glm::vec3> generate_rectangle_normals();
 std::vector<Rectangle> generate_grid_rectangles(const glm::vec3 &center_position, float base_width, float base_height,
@@ -322,7 +530,8 @@ std::vector<glm::vec3> generate_annulus_vertices(float center_x, float center_y,
                                                  int num_segments, float percent = 1);
 std::vector<unsigned int> generate_annulus_indices(int num_segments, float percent = 1);
 
-// points are the points of the star
+draw_info::IndexedVertexPositions generate_star(float center_x, float center_y, float outer_radius, float inner_radius,
+                                                int num_star_tips, bool blunt_tips = false);
 std::vector<glm::vec3> generate_star_vertices(float center_x, float center_y, float outer_radius, float inner_radius,
                                               int num_star_tips, bool blunt_tips = false);
 std::vector<unsigned int> generate_star_indices(int num_star_tips, bool blunt_tips);

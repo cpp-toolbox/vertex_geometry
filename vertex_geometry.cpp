@@ -71,8 +71,8 @@ std::vector<Rectangle> get_rects_intersecting_circle(const Grid &grid, float cx,
     return result;
 }
 
-draw_info::IndexedVertexPositions text_grid_to_rect_grid(const std::string &text_grid,
-                                                         const vertex_geometry::Rectangle bounding_rect) {
+draw_info::IndexedVertexPositions binary_text_grid_to_rect_grid(const std::string &text_grid,
+                                                                const vertex_geometry::Rectangle bounding_rect) {
     unsigned int rows = 0;
     unsigned int cols = 0;
 
@@ -185,8 +185,8 @@ draw_info::IndexedVertexPositions Rectangle::get_ivs() const {
 glm::vec3 Rectangle::get_top_left() const { return center + glm::vec3(-width / 2.0f, height / 2.0f, 0.0f); }
 glm::vec3 Rectangle::get_top_center() const { return center + glm::vec3(0.0f, height / 2.0f, 0.0f); }
 glm::vec3 Rectangle::get_top_right() const { return center + glm::vec3(width / 2.0f, height / 2.0f, 0.0f); }
-glm::vec3 Rectangle::get_center_left() const { return center + glm::vec3(-width / 2.0f, 0.0f, 0.0f); }
-glm::vec3 Rectangle::get_center_right() const { return center + glm::vec3(width / 2.0f, 0.0f, 0.0f); }
+glm::vec3 Rectangle::get_left_center() const { return center + glm::vec3(-width / 2.0f, 0.0f, 0.0f); }
+glm::vec3 Rectangle::get_right_center() const { return center + glm::vec3(width / 2.0f, 0.0f, 0.0f); }
 glm::vec3 Rectangle::get_bottom_left() const { return center + glm::vec3(-width / 2.0f, -height / 2.0f, 0.0f); }
 glm::vec3 Rectangle::get_bottom_center() const { return center + glm::vec3(0.0f, -height / 2.0f, 0.0f); }
 glm::vec3 Rectangle::get_bottom_right() const { return center + glm::vec3(width / 2.0f, -height / 2.0f, 0.0f); }
@@ -311,8 +311,20 @@ Rectangle create_rectangle_from_bottom_right(const glm::vec3 &bottom_right, floa
     return {bottom_right + glm::vec3(-width / 2.0f, height / 2.0f, 0.0f), width, height};
 }
 
-Rectangle create_rectangle_from_center_left(const glm::vec3 &center_left, float width, float height) {
+Rectangle create_rectangle_from_left_center(const glm::vec3 &center_left, float width, float height) {
     return {center_left + glm::vec3(width / 2.0f, 0.0f, 0.0f), width, height};
+}
+
+Rectangle create_rectangle_from_top_center(const glm::vec3 &top_center, float width, float height) {
+    return {top_center + glm::vec3(0.0f, -height / 2.0f, 0.0f), width, height};
+}
+
+Rectangle create_rectangle_from_bottom_center(const glm::vec3 &bottom_center, float width, float height) {
+    return {bottom_center + glm::vec3(0.0f, height / 2.0f, 0.0f), width, height};
+}
+
+Rectangle create_rectangle_from_right_center(const glm::vec3 &center_right, float width, float height) {
+    return {center_right + glm::vec3(-width / 2.0f, 0.0f, 0.0f), width, height};
 }
 
 Rectangle create_rectangle_from_center(const glm::vec3 &center, float width, float height) {
@@ -422,16 +434,38 @@ Rectangle expand_rectangle(const Rectangle &rect, float x_expand, float y_expand
     return expanded_rect;
 }
 
-Rectangle shrink_rectangle(const Rectangle &rect, float x_shrink, float y_shrink) {
-    Rectangle shrunk_rect;
-    shrunk_rect.center = rect.center;
-    shrunk_rect.width = std::max(0.0f, rect.width - 2 * x_shrink);
-    shrunk_rect.height = std::max(0.0f, rect.height - 2 * y_shrink);
-    return shrunk_rect;
+Rectangle inset_rectangle(const Rectangle &rect, float x_inset, float y_inset) {
+    Rectangle inset_rect;
+    inset_rect.center = rect.center;
+    inset_rect.width = std::max(0.0f, rect.width - 2.0f * x_inset);
+    inset_rect.height = std::max(0.0f, rect.height - 2.0f * y_inset);
+    return inset_rect;
+}
+
+Rectangle scale_rectangle(const Rectangle &rect, float scale) { return scale_rectangle(rect, scale, scale); }
+
+Rectangle scale_rectangle(const Rectangle &rect, float x_scale, float y_scale) {
+    return Rectangle(rect.center, rect.width * x_scale, rect.height * y_scale);
+}
+
+Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float shrink) {
+    return scale_rectangle_from_left_side(rect, shrink, shrink);
 }
 
 Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float x_shrink, float y_shrink) {
-    return create_rectangle_from_center_left(rect.get_center_left(), rect.width * x_shrink, rect.height * y_shrink);
+    return create_rectangle_from_left_center(rect.get_left_center(), rect.width * x_shrink, rect.height * y_shrink);
+}
+
+Rectangle scale_rectangle_from_top_side(const Rectangle &rect, float x_shrink, float y_shrink) {
+    return create_rectangle_from_top_center(rect.get_top_center(), rect.width * x_shrink, rect.height * y_shrink);
+}
+
+Rectangle scale_rectangle_from_top_left(const Rectangle &rect, float x_shrink, float y_shrink) {
+    return create_rectangle_from_top_left(rect.get_top_left(), rect.width * x_shrink, rect.height * y_shrink);
+}
+
+Rectangle scale_rectangle_from_bottom_left(const Rectangle &rect, float x_shrink, float y_shrink) {
+    return create_rectangle_from_bottom_left(rect.get_bottom_left(), rect.width * x_shrink, rect.height * y_shrink);
 }
 
 Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset) {
@@ -477,9 +511,10 @@ Rectangle get_bounding_rectangle(const std::vector<Rectangle> &rectangles) {
     return {bounding_center, bounding_width, bounding_height};
 }
 
-std::vector<Rectangle> subdivide_rectangle(const Rectangle &rect, unsigned int num_subdivisions, bool vertical) {
+std::vector<Rectangle> subdivide_rectangle(const Rectangle &rect, unsigned int num_subdivisions,
+                                           CutDirection cut_direction) {
     std::vector<unsigned int> even_weights(num_subdivisions, 1);
-    return weighted_subdivision(rect, even_weights, vertical);
+    return weighted_subdivision(rect, even_weights, cut_direction);
 }
 
 std::vector<Rectangle> vertical_weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights) {
@@ -488,11 +523,11 @@ std::vector<Rectangle> vertical_weighted_subdivision(const Rectangle &rect, cons
 
 std::vector<Rectangle> horizontal_weighted_subdivision(const Rectangle &rect,
                                                        const std::vector<unsigned int> &weights) {
-    return weighted_subdivision(rect, weights, false);
+    return weighted_subdivision(rect, weights, CutDirection::horizontal);
 }
 
 std::vector<Rectangle> weighted_subdivision(const Rectangle &rect, const std::vector<unsigned int> &weights,
-                                            bool vertical) {
+                                            CutDirection cut_direction) {
     std::vector<Rectangle> subrectangles;
     float total_weight = 0.0f;
 
@@ -500,18 +535,21 @@ std::vector<Rectangle> weighted_subdivision(const Rectangle &rect, const std::ve
     for (auto weight : weights) {
         total_weight += static_cast<float>(weight);
     }
+    bool vertical = cut_direction == CutDirection::vertical;
+    bool horizontal = cut_direction == CutDirection::horizontal;
 
-    // Initialize start position (for top-left corner or bottom-left corner)
-    float start_position = (vertical) ? rect.center.y + rect.height / 2 : rect.center.x - rect.width / 2;
+    // Initialize start position for either the x or y component, for horizontal cuts we start at the top of the rect,
+    // for vertical cuts we start at the left side
+    float start_position = (horizontal) ? rect.center.y + rect.height / 2 : rect.center.x - rect.width / 2;
     float current_position = start_position;
 
-    // Generate subrectangles
+    // Generate subrectangles by starting from the start position and doing sequential cuts
     for (size_t i = 0; i < weights.size(); ++i) {
         float subdivision_size =
-            (static_cast<float>(weights[i]) / total_weight) * (vertical ? rect.height : rect.width);
+            (static_cast<float>(weights[i]) / total_weight) * (not vertical ? rect.height : rect.width);
 
         Rectangle subrect;
-        if (vertical) {
+        if (horizontal) {
             // Create subrectangle vertically from top to bottom
             subrect.center = rect.center;
             subrect.center.y = current_position - subdivision_size / 2;
@@ -1853,6 +1891,14 @@ std::vector<unsigned int> generate_annulus_indices(int num_segments, float perce
     }
 
     return indices;
+}
+
+draw_info::IndexedVertexPositions generate_star(float center_x, float center_y, float outer_radius, float inner_radius,
+                                                int num_star_tips, bool blunt_tips) {
+    return {
+        generate_star_indices(num_star_tips, blunt_tips),
+        generate_star_vertices(center_x, center_y, outer_radius, inner_radius, num_star_tips, blunt_tips),
+    };
 }
 
 std::vector<glm::vec3> generate_star_vertices(float center_x, float center_y, float outer_radius, float inner_radius,
