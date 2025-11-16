@@ -478,6 +478,7 @@ std::vector<unsigned int> generate_cube_indices();
 std::vector<glm::vec3> generate_square_vertices(float center_x, float center_y, float side_length);
 std::vector<unsigned int> generate_square_indices();
 
+// NOTE: this is only in a 2d flat sense, so idk if this was the best naming choice
 draw_info::IndexedVertexPositions generate_rectangle(float center_x, float center_y, float width, float height);
 std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_y, float width, float height);
 // TODO: the below shouldn't exist, instead the above should just take in z, but i don't want to bust the api right
@@ -486,12 +487,58 @@ draw_info::IndexedVertexPositions generate_rectangle(float center_x, float cente
                                                      float height);
 std::vector<glm::vec3> generate_rectangle_vertices_with_z(float center_x, float center_y, float center_z, float width,
                                                           float height);
+/**
+ * @brief Generates the index buffer for a rectangle made of two triangles.
+ *
+ * This function returns a std::vector of unsigned integers representing
+ * the indices for drawing a rectangle (quad) using two triangles. The
+ * vertex ordering assumes the rectangle vertices are numbered as follows:
+ *
+ *   0 --- 1
+ *   |   / |
+ *   |  /  |
+ *   | /   |
+ *   3 --- 2
+ *
+ * The triangles are defined as:
+ * - First triangle: vertices 0, 1, 3
+ * - Second triangle: vertices 1, 2, 3
+ *
+ * @return std::vector<unsigned int> The indices for the rectangle.
+ */
 std::vector<unsigned int> generate_rectangle_indices();
 std::vector<glm::vec2> generate_rectangle_texture_coordinates();
 std::vector<glm::vec2> generate_rectangle_texture_coordinates_flipped_vertically();
 
+/**
+ * @brief Generates the four corner vertices of a 3D rectangle (quad).
+ *
+ * Given a rectangle's center, orientation, and size, this function
+ * computes the positions of its four corners in 3D space. The rectangle
+ * is defined by two direction vectors: one for the width and one for the
+ * height, and their respective magnitudes.
+ *
+ * The vertices are returned in the following order:
+ * 1. Top right
+ * 2. Bottom right
+ * 3. Bottom left
+ * 4. Top left
+ *
+ * @param center The center position of the rectangle in 3D space.
+ * @param width_dir The direction vector along the rectangle's width.
+ * @param height_dir The direction vector along the rectangle's height.
+ * @param width The total width of the rectangle.
+ * @param height The total height of the rectangle.
+ * @return std::vector<glm::vec3> A vector containing the four corner vertices.
+ *
+ * @note the width dir and height dir could also just store their magnitudes directly.
+ */
 std::vector<glm::vec3> generate_rectangle_vertices_3d(const glm::vec3 &center, const glm::vec3 &width_dir,
                                                       const glm::vec3 &height_dir, float width, float height);
+
+draw_info::IndexedVertexPositions generate_rectangle_3d(const glm::vec3 &center, const glm::vec3 &width_dir,
+                                                        const glm::vec3 &height_dir, float width, float height);
+
 std::vector<glm::vec3> generate_rectangle_vertices_from_points(const glm::vec3 &point_a, const glm::vec3 &point_b,
                                                                const glm::vec3 &surface_normal, float height = 1);
 

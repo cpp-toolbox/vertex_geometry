@@ -1724,6 +1724,11 @@ std::vector<glm::vec3> generate_rectangle_vertices_3d(const glm::vec3 &center, c
     };
 }
 
+draw_info::IndexedVertexPositions generate_rectangle_3d(const glm::vec3 &center, const glm::vec3 &width_dir,
+                                                        const glm::vec3 &height_dir, float width, float height) {
+    return {generate_rectangle_indices(), generate_rectangle_vertices_3d(center, width_dir, height_dir, width, height)};
+}
+
 // NOTE: the surface normal is not unique here, this is because we are already constrained by a, b thus
 /*
  *                 SN                  SN2
@@ -1747,8 +1752,8 @@ std::vector<glm::vec3> generate_rectangle_vertices_3d(const glm::vec3 &center, c
  * A
  *
  * given the direction vector B - A, then note that there are a family of surface normals yielding the same width
- * dir, note that the surface normal and B - A define a plane that passes through both lines, and any vector such as
- * SN1 or SN2 also will create width_dir with the cross product is used, this we don't require that the surface
+ * dir, note that the surface normal and B - A define a plane that passes through both points, and any vector such
+ * as SN1 or SN2 also will create width_dir with the cross product is used, thus we don't require that the surface
  * normal be actually perpendicular to B - A
  *
  *
