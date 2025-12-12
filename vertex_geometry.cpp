@@ -1774,9 +1774,9 @@ std::vector<glm::vec3> generate_rectangle_vertices_from_points(const glm::vec3 &
 
 std::vector<unsigned int> generate_rectangle_indices() {
     return {
-        // note that we start from 0!
-        0, 1, 3, // first triangle
-        1, 2, 3  // second triangle
+        // ordering to make them ccw
+        0, 3, 1, // first triangle: top right -> top left -> bottom right
+        1, 3, 2  // second triangle: bottom right -> top left -> bottom left
     };
 }
 
