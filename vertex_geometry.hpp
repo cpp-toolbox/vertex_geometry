@@ -88,6 +88,9 @@ class AxisAlignedBoundingBox {
      * Iterates over all given positions to compute the minimum and maximum
      * extents of the box along each axis.
      *
+     * @note if you already know min and max then just pass them in as a vector of vec3s there is no specific
+     * constructor for doing that
+     *
      * @param xyz_positions A list of 3D positions used to compute the bounding box.
      */
     AxisAlignedBoundingBox(const std::vector<glm::vec3> &xyz_positions) {
@@ -181,8 +184,6 @@ class AxisAlignedBoundingBox2D {
 draw_info::IndexedVertexPositions triangulate_ngon(const NGon &ngon);
 draw_info::IndexedVertexPositions connect_ngons(const NGon &a, const NGon &b);
 
-// Triangulate any Ngon dynamically
-
 class Rectangle {
   public:
     // by default we use width height 2 to take up the full [-1, 1] x [-1, 1] ndc space
@@ -250,6 +251,11 @@ Rectangle scale_rectangle_from_bottom_left(const Rectangle &rect, float x_shrink
 Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset);
 Rectangle get_bounding_rectangle(const std::vector<Rectangle> &rectangles);
 
+/**
+ * @brief a rectangular grid which allows you to get the rectangles out of it
+ *
+ *
+ */
 class Grid {
   public:
     Grid(int rows, int cols, float width = 2.0f, float height = 2.0f, float origin_x = 0.0f, float origin_y = 0.0f,
@@ -280,7 +286,25 @@ bool circle_intersects_rect(float cx, float cy, float radius, const Rectangle &r
 std::vector<Rectangle> get_rects_intersecting_circle(const Grid &grid, float cx, float cy, float radius);
 
 /**
- * a binary text grid is a string with newlines where each line has the exact same length forming a sort of 2d grid. The
+ * Binary Text Grid:
+ *
+ * ----------
+ * -****-----
+ * **--**----
+ * **--**----
+ * **--**----
+ * **--**----
+ * **--**----
+ * **--**----
+ * **--**----
+ * -****-----
+ * ----------
+ * ----------
+ * ----------
+ *
+ * Also note that "()" is how you can make multiline strings in c++
+ *
+ * Is string with newlines where each line has the exact same length forming a sort of 2d grid. The
  * elements in the grid are binary, an asterisk indicates that pixel is "on", and a space indicates that it is off.
  *
  * This function takes in a binary text grid, and then constructs an equivalent grid of squares wherever the binary text
@@ -291,6 +315,38 @@ std::vector<Rectangle> get_rects_intersecting_circle(const Grid &grid, float cx,
  */
 draw_info::IndexedVertexPositions binary_text_grid_to_rect_grid(const std::string &text_grid,
                                                                 const vertex_geometry::Rectangle bounding_rect);
+
+/**
+ * @brief Generates a triangle flat on the XY plane at Z = 0 with a configurable tip position.
+ *
+ * The triangle is centered at the origin (0,0,0). The tip of the triangle can be offset along
+ * the X-axis of the base using `tip_offset` in the range [-1, 1]:
+ * - `0` places the tip in the middle of the base (default),
+ * - `1` aligns the tip to the right end of the base,
+ * - `-1` aligns the tip to the left end of the base.
+ *
+ * @param width The width of the triangle's base along the X-axis.
+ * @param height The vertical height of the triangle along the Y-axis.
+ * @param tip_offset Optional. A value in [-1,1] specifying the tip's horizontal offset. Default is 0.0f.
+ * @return draw_info::IndexedVertexPositions Contains the triangle's vertices and indices.
+ */
+draw_info::IndexedVertexPositions generate_triangle_with_tip_offset(float width, float height, float tip_offset = 0.0f);
+
+/**
+ * @brief Generates a right-angle triangle flat on the XY plane at Z = 0.
+ *
+ * The triangle is created by calling `generate_triangle_with_tip_offset` with `tip_offset` set
+ * to `1` or `-1` depending on alignment:
+ * - `positive_x_aligned = true` → right angle at bottom-left, tip at right (+X) side,
+ * - `positive_x_aligned = false` → right angle at bottom-right, tip at left (-X) side.
+ *
+ * @param width The width of the triangle's base along the X-axis.
+ * @param height The vertical height of the triangle along the Y-axis.
+ * @param positive_x_aligned Optional. If true, the right angle is at the bottom-left. Default is true.
+ * @return draw_info::IndexedVertexPositions Contains the triangle's vertices and indices.
+ */
+draw_info::IndexedVertexPositions generate_right_angle_triangle(float width, float height,
+                                                                bool positive_x_aligned = true);
 
 draw_info::IndexedVertexPositions generate_rectangle_between_2d(const glm::vec2 &p1, const glm::vec2 &p2,
                                                                 float thickness = 0.01);
@@ -437,6 +493,29 @@ draw_info::IVPNormals generate_cube(float size = 1.0f);
 
 draw_info::IVPNormals generate_box(float size_x = 1.0f, float size_y = 1.0f, float size_z = 1.0f);
 
+/**
+ * @brief Generates a wedge-shaped 3D prism centered at the origin.
+ *
+ * The wedge is constructed by extruding a triangle along the Z-axis. The triangle
+ * lies on the XY plane, and the wedge extends symmetrically along Z so that the
+ * prism is centered at the origin. The tip of the triangle can be horizontally
+ * offset using `tip_offset`.
+ *
+ * @param width The width of the triangle's base along the X-axis. Default is 1.
+ * @param height The height of the triangle along the Y-axis. Default is 1.
+ * @param depth The depth of the wedge along the Z-axis. Default is 1.
+ * @param tip_offset Optional. A value in [-1, 1] controlling the horizontal position
+ *                   of the triangle's tip along the base:
+ *
+ *                   - 0.0 (default): tip is centered in the base
+ *                   - 1.0 : tip aligned to the right end of the base,
+ *                   - -1.0 : tip aligned to the left end of the base.
+ *
+ * @return draw_info::IndexedVertexPositions Contains the wedge's vertices and indices.
+ */
+draw_info::IndexedVertexPositions generate_wedge(float width = 1, float height = 1, float depth = 1,
+                                                 float tip_offset = 0.0f);
+
 draw_info::IVPNormals generate_cone(int segments = 8, float height = 1.0f, float radius = 0.5f);
 
 draw_info::IndexedVertexPositions generate_cone_between(const glm::vec3 &base, const glm::vec3 &tip, int segments = 8,
@@ -542,9 +621,16 @@ draw_info::IndexedVertexPositions generate_rectangle_3d(const glm::vec3 &center,
 std::vector<glm::vec3> generate_rectangle_vertices_from_points(const glm::vec3 &point_a, const glm::vec3 &point_b,
                                                                const glm::vec3 &surface_normal, float height = 1);
 
+/**
+ * @brief generate axes showing x y and
+ *
+ */
+
 draw_info::IndexedVertexPositions generate_3d_arrow_with_ratio(const glm::vec3 &start, const glm::vec3 &end,
                                                                int num_segments = 16,
                                                                float length_thickness_ratio = 0.07);
+
+draw_info::IndexedVertexPositions generate_3d_axes();
 
 draw_info::IndexedVertexPositions generate_3d_arrow(const glm::vec3 &start, const glm::vec3 &end, int num_segments = 16,
                                                     float stem_thickness = 0.12);

@@ -116,6 +116,53 @@ draw_info::IndexedVertexPositions binary_text_grid_to_rect_grid(const std::strin
     return vertex_geometry::merge_ivps(ivps);
 }
 
+draw_info::IndexedVertexPositions generate_triangle_with_tip_offset(float width, float height, float tip_offset) {
+    // clamp tip_offset to [-1, 1]
+    if (tip_offset < -1.0f)
+        tip_offset = -1.0f;
+    if (tip_offset > 1.0f)
+        tip_offset = 1.0f;
+
+    float half_width = width / 2.0f;
+    float half_height = height / 2.0f;
+
+    // base vertices
+    glm::vec3 bottom_left(-half_width, -half_height, 0.0f);
+    glm::vec3 bottom_right(half_width, -half_height, 0.0f);
+
+    // tip slides along x axis of the base
+    glm::vec3 tip(tip_offset * half_width, half_height, 0.0f);
+
+    std::vector<glm::vec3> vertices = {tip, bottom_left, bottom_right};
+    std::vector<unsigned int> indices = {0, 1, 2}; // single triangle, CCW
+
+    return {indices, vertices};
+}
+
+draw_info::IndexedVertexPositions generate_right_angle_triangle(float width, float height, bool positive_x_aligned) {
+    float half_width = width / 2.0f;
+    float half_height = height / 2.0f;
+
+    glm::vec3 tip;
+    glm::vec3 base_left;
+    glm::vec3 base_right;
+
+    if (positive_x_aligned) {
+        tip = {half_width, half_height, 0.0f};         // top right
+        base_left = {-half_width, -half_height, 0.0f}; // bottom left
+        base_right = {half_width, -half_height, 0.0f}; // bottom right
+    } else {
+        tip = {-half_width, half_height, 0.0f};        // top left
+        base_left = {-half_width, -half_height, 0.0f}; // bottom left
+        base_right = {half_width, -half_height, 0.0f}; // bottom right
+    }
+
+    std::vector<glm::vec3> vertices = {tip, base_left, base_right};
+    std::vector<unsigned int> indices = {0, 1, 2}; // CCW
+
+    return {indices, vertices};
+}
+
 draw_info::IndexedVertexPositions generate_rectangle_between_2d(const glm::vec2 &p1, const glm::vec2 &p2,
                                                                 float thickness) {
     glm::vec2 dir = p2 - p1;
@@ -389,7 +436,6 @@ draw_info::IndexedVertexPositions triangulate_ngon(const NGon &ngon) {
     return draw_info::IndexedVertexPositions(indices, xyz_positions);
 }
 
-// Connect two Ngons dynamically
 draw_info::IndexedVertexPositions connect_ngons(const NGon &a, const NGon &b) {
     auto capA = triangulate_ngon(a);
     auto capB = triangulate_ngon(b);
@@ -531,19 +577,19 @@ std::vector<Rectangle> weighted_subdivision(const Rectangle &rect, const std::ve
     std::vector<Rectangle> subrectangles;
     float total_weight = 0.0f;
 
-    // Calculate total weight
+    // calculate total weight
     for (auto weight : weights) {
         total_weight += static_cast<float>(weight);
     }
     bool vertical = cut_direction == CutDirection::vertical;
     bool horizontal = cut_direction == CutDirection::horizontal;
 
-    // Initialize start position for either the x or y component, for horizontal cuts we start at the top of the rect,
+    // initialize start position for either the x or y component, for horizontal cuts we start at the top of the rect,
     // for vertical cuts we start at the left side
     float start_position = (horizontal) ? rect.center.y + rect.height / 2 : rect.center.x - rect.width / 2;
     float current_position = start_position;
 
-    // Generate subrectangles by starting from the start position and doing sequential cuts
+    // generate subrectangles by starting from the start position and doing sequential cuts
     for (size_t i = 0; i < weights.size(); ++i) {
         float subdivision_size =
             (static_cast<float>(weights[i]) / total_weight) * (not vertical ? rect.height : rect.width);
@@ -995,6 +1041,28 @@ draw_info::IVPNormals generate_box(float size_x, float size_y, float size_z) {
     }
 
     return draw_info::IVPNormals(std::move(indices), std::move(vertices), std::move(normals));
+}
+
+draw_info::IndexedVertexPositions generate_wedge(float width, float height, float depth, float tip_offset) {
+    // generate bottom triangle at z = -depth/2
+    auto tri_a_ivp = generate_triangle_with_tip_offset(width, height, tip_offset);
+    std::vector<glm::vec3> tri_a_pts;
+    for (const auto &v : tri_a_ivp.xyz_positions) {
+        tri_a_pts.push_back(glm::vec3(v.x, v.y, v.z - depth * 0.5f));
+    }
+
+    // generate top triangle at z = +depth/2
+    auto tri_b_ivp = generate_triangle_with_tip_offset(width, height, tip_offset);
+    std::vector<glm::vec3> tri_b_pts;
+    for (const auto &v : tri_b_ivp.xyz_positions) {
+        tri_b_pts.push_back(glm::vec3(v.x, v.y, v.z + depth * 0.5f));
+    }
+
+    // wrap in ngons
+    NGon a(tri_a_pts);
+    NGon b(tri_b_pts);
+
+    return connect_ngons(a, b);
 }
 
 draw_info::IVPNormals generate_cone(int segments, float height, float radius) {
@@ -1991,6 +2059,13 @@ draw_info::IndexedVertexPositions generate_3d_arrow_with_ratio(const glm::vec3 &
     float stem_thickness = length * length_thickness_ratio;
 
     return generate_3d_arrow(start, end, num_segments, stem_thickness);
+}
+
+draw_info::IndexedVertexPositions generate_3d_axes() {
+    auto x = generate_3d_arrow_with_ratio(glm_utils::zero_R3, glm_utils::x);
+    auto y = generate_3d_arrow_with_ratio(glm_utils::zero_R3, glm_utils::y);
+    auto z = generate_3d_arrow_with_ratio(glm_utils::zero_R3, glm_utils::z);
+    return merge_ivps({x, y, z});
 }
 
 draw_info::IndexedVertexPositions generate_3d_arrow(const glm::vec3 &start, const glm::vec3 &end, int num_segments,
