@@ -313,6 +313,9 @@ std::vector<Rectangle> get_rects_intersecting_circle(const Grid &grid, float cx,
  * The purpose of this function is to allow you to make simple pixel art or fonts without having to use images
  *
  */
+
+std::vector<draw_info::IndexedVertexPositions>
+binary_text_grid_to_rect_grid_split(const std::string &text_grid, const vertex_geometry::Rectangle bounding_rect);
 draw_info::IndexedVertexPositions binary_text_grid_to_rect_grid(const std::string &text_grid,
                                                                 const vertex_geometry::Rectangle bounding_rect);
 
@@ -348,8 +351,67 @@ draw_info::IndexedVertexPositions generate_triangle_with_tip_offset(float width,
 draw_info::IndexedVertexPositions generate_right_angle_triangle(float width, float height,
                                                                 bool positive_x_aligned = true);
 
+enum class Plane {
+    XY,
+    XZ,
+    YZ,
+    YX = XY, // optional alias
+    ZX = XZ, // optional alias
+    ZY = YZ  // optional alias
+};
+
 draw_info::IndexedVertexPositions generate_rectangle_between_2d(const glm::vec2 &p1, const glm::vec2 &p2,
-                                                                float thickness = 0.01);
+                                                                float thickness = 0.01, Plane plane = Plane::XZ);
+
+draw_info::IndexedVertexPositions generate_rectangle_between(const glm::vec3 &p1, const glm::vec3 &p2, float thickness,
+                                                             const glm::vec3 &normal = glm_utils::y);
+
+draw_info::IndexedVertexPositions connect_points_by_rectangles_2d(const std::vector<glm::vec2> &points,
+                                                                  float thickness = 0.01, Plane plane = Plane::XZ);
+
+/**
+ * @brief Generates a sequence of rectangles connecting consecutive 3D points.
+ *
+ * Each rectangle is represented as a draw_info::IndexedVertexPositions object.
+ * Optionally, the rectangles can share edges so that consecutive rectangles
+ * have perfectly aligned edges, avoiding cracks or overlap in the rectangles.
+ *
+ * @param points A vector of glm::vec3 points to connect.
+ *               Must contain at least two points.
+ * @param thickness The thickness of each rectangle (default: 0.01).
+ * @param normal The normal vector used to compute the perpendicular direction
+ *               for the rectangle (default: glm_utils::y).
+ * @param share_edges If true, consecutive rectangles share edges to align perfectly
+ *                    (default: true).
+ *
+ * @return std::vector<draw_info::IndexedVertexPositions> A vector of rectangles,
+ *         one for each segment between consecutive points.
+ */
+std::vector<draw_info::IndexedVertexPositions>
+connect_points_by_rectangles_split(const std::vector<glm::vec3> &points, float thickness = 0.01,
+                                   const glm::vec3 &normal = glm_utils::y, bool share_edges = true);
+
+/**
+ * @brief Connects a sequence of 3D points by rectangles and merges them into a single mesh.
+ *
+ * This function internally calls connect_points_by_rectangles_split() and then merges
+ * all resulting rectangles into one draw_info::IndexedVertexPositions object,
+ * suitable for rendering as a single mesh.
+ *
+ * @param points A vector of glm::vec3 points to connect.
+ *               Must contain at least two points.
+ * @param thickness The thickness of each rectangle (default: 0.01).
+ * @param normal The normal vector used to compute the perpendicular direction
+ *               for the rectangle (default: glm_utils::y).
+ * @param share_edges If true, consecutive rectangles share edges to align perfectly
+ *                    (default: true).
+ *
+ * @return draw_info::IndexedVertexPositions A single merged mesh representing all rectangles.
+ */
+draw_info::IndexedVertexPositions connect_points_by_rectangles(const std::vector<glm::vec3> &points,
+                                                               float thickness = 0.01,
+                                                               const glm::vec3 &normal = glm_utils::y,
+                                                               bool share_edges = true);
 
 Rectangle create_rectangle_from_corners(const glm::vec3 top_left, const glm::vec3 top_right,
                                         const glm::vec3 bottom_left, const glm::vec3 bottom_right);
@@ -532,8 +594,6 @@ draw_info::IVPNormals generate_terrain(float size_x = 100.0f, float size_z = 100
                                        int resolution_z = 50, float max_height = 5.0f, float base_height = 0.0f,
                                        int octaves = 4, float persistence = 0.5f, float scale = 50.0f,
                                        float seed = 0.0f);
-
-draw_info::IndexedVertexPositions connect_points_by_rectangles(const std::vector<glm::vec2> &points);
 
 draw_info::IndexedVertexPositions generate_function_visualization(std::function<glm::vec3(double)> f, double t_start,
                                                                   double t_end, double step_size,
