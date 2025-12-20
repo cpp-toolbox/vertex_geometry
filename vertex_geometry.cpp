@@ -853,6 +853,23 @@ draw_info::IndexedVertexPositions generate_rectangle(float center_x, float cente
             generate_rectangle_vertices_with_z(center_x, center_y, center_z, width, height)};
 }
 
+draw_info::IndexedVertexPositions generate_rectangle(const glm::vec3 &center, const glm::vec3 &u, const glm::vec3 &v) {
+    draw_info::IndexedVertexPositions rect;
+
+    // four corners in counter-clockwise order
+    glm::vec3 p0 = center - u - v;
+    glm::vec3 p1 = center + u - v;
+    glm::vec3 p2 = center + u + v;
+    glm::vec3 p3 = center - u + v;
+
+    rect.xyz_positions = {p0, p1, p2, p3};
+
+    // two triangles: (p0, p1, p2) and (p0, p2, p3)
+    rect.indices = {0, 1, 2, 0, 2, 3};
+
+    return rect;
+}
+
 std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_y, float width, float height) {
     float half_width = width / (float)2;
     float half_height = height / (float)2;

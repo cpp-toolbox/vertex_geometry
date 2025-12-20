@@ -624,6 +624,9 @@ std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_
 // now
 draw_info::IndexedVertexPositions generate_rectangle(float center_x, float center_y, float center_z, float width,
                                                      float height);
+
+draw_info::IndexedVertexPositions generate_rectangle(const glm::vec3 &center, const glm::vec3 &u, const glm::vec3 &v);
+
 std::vector<glm::vec3> generate_rectangle_vertices_with_z(float center_x, float center_y, float center_z, float width,
                                                           float height);
 /**
