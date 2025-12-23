@@ -234,6 +234,7 @@ Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float x_shrink, 
 Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float x_shrink, float y_shrink = 1);
 Rectangle scale_rectangle_from_top_side(const Rectangle &rect, float x_shrink, float y_shrink);
 Rectangle scale_rectangle_from_top_left(const Rectangle &rect, float x_shrink, float y_shrink);
+Rectangle scale_rectangle_from_top_right(const Rectangle &rect, float x_shrink, float y_shrink);
 Rectangle scale_rectangle_from_bottom_left(const Rectangle &rect, float x_shrink, float y_shrink);
 /**
  * @brief Slides a rectangle by a given offset in terms of its width and height.
@@ -325,7 +326,31 @@ Rectangle create_rectangle_from_right_center(const glm::vec3 &center_right, floa
 Rectangle create_rectangle_from_center(const glm::vec3 &center, float width, float height);
 
 enum class CutDirection {
+    /*
+     * @code
+     * +-----------------------+
+     * |     |     |     |     |
+     * |     |     |     |     |
+     * |  0  |  1  |  2  |  3  |
+     * |     |     |     |     |
+     * |     |     |     |     |
+     * +-----------------------+
+     * @endcode
+     */
     vertical,
+    /*
+     * @code
+     * +-----------------------+
+     * |           0           |
+     * |-----------------------|
+     * |           1           |
+     * |-----------------------|
+     * |           2           |
+     * |-----------------------|
+     * |           3           |
+     * +-----------------------+
+     * @endcode
+     */
     horizontal,
 };
 
@@ -334,33 +359,11 @@ enum class CutDirection {
  *
  * Depending on the `vertical` parameter, the rectangle is split either along the vertical axis:
  *
- * @code
- *
- * +------------------------+
- * |  0  |  1   |  2  |  3  |
- * +------------------------+
- *
- * @endcode
  *
  * (the cuts made are vertical)
  *
  * and when vertical is false we get horizontal cuts like this
  *
- * @code
- *
- * +---+
- * | 0 |
- * |---|
- * | 1 |
- * |---|
- * | 2 |
- * |---|
- * | 3 |
- * |---|
- * | 4 |
- * +---+
- *
- * @endcode
  *
  * @param rect The rectangle to subdivide.
  * @param num_subdivisions The number of sub-rectangles to create.

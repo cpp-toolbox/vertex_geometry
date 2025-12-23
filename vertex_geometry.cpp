@@ -464,6 +464,10 @@ Rectangle scale_rectangle_from_top_left(const Rectangle &rect, float x_shrink, f
     return create_rectangle_from_top_left(rect.get_top_left(), rect.width * x_shrink, rect.height * y_shrink);
 }
 
+Rectangle scale_rectangle_from_top_right(const Rectangle &rect, float x_shrink, float y_shrink) {
+    return create_rectangle_from_top_right(rect.get_top_right(), rect.width * x_shrink, rect.height * y_shrink);
+}
+
 Rectangle scale_rectangle_from_bottom_left(const Rectangle &rect, float x_shrink, float y_shrink) {
     return create_rectangle_from_bottom_left(rect.get_bottom_left(), rect.width * x_shrink, rect.height * y_shrink);
 }
