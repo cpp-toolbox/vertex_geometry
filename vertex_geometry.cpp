@@ -71,8 +71,8 @@ std::vector<Rectangle> get_rects_intersecting_circle(const Grid &grid, float cx,
     return result;
 }
 
-draw_info::IndexedVertexPositions binary_text_grid_to_rect_grid(const std::string &text_grid,
-                                                                const vertex_geometry::Rectangle bounding_rect) {
+std::vector<draw_info::IndexedVertexPositions>
+binary_text_grid_to_rect_grid_split(const std::string &text_grid, const vertex_geometry::Rectangle bounding_rect) {
     unsigned int rows = 0;
     unsigned int cols = 0;
 
@@ -113,11 +113,63 @@ draw_info::IndexedVertexPositions binary_text_grid_to_rect_grid(const std::strin
         }
     }
 
-    return vertex_geometry::merge_ivps(ivps);
+    return ivps;
+}
+
+draw_info::IndexedVertexPositions binary_text_grid_to_rect_grid(const std::string &text_grid,
+                                                                const vertex_geometry::Rectangle bounding_rect) {
+    return vertex_geometry::merge_ivps(binary_text_grid_to_rect_grid_split(text_grid, bounding_rect));
+}
+
+draw_info::IndexedVertexPositions generate_triangle_with_tip_offset(float width, float height, float tip_offset) {
+    // clamp tip_offset to [-1, 1]
+    if (tip_offset < -1.0f)
+        tip_offset = -1.0f;
+    if (tip_offset > 1.0f)
+        tip_offset = 1.0f;
+
+    float half_width = width / 2.0f;
+    float half_height = height / 2.0f;
+
+    // base vertices
+    glm::vec3 bottom_left(-half_width, -half_height, 0.0f);
+    glm::vec3 bottom_right(half_width, -half_height, 0.0f);
+
+    // tip slides along x axis of the base
+    glm::vec3 tip(tip_offset * half_width, half_height, 0.0f);
+
+    std::vector<glm::vec3> vertices = {tip, bottom_left, bottom_right};
+    std::vector<unsigned int> indices = {0, 1, 2}; // single triangle, CCW
+
+    return {indices, vertices};
+}
+
+draw_info::IndexedVertexPositions generate_right_angle_triangle(float width, float height, bool positive_x_aligned) {
+    float half_width = width / 2.0f;
+    float half_height = height / 2.0f;
+
+    glm::vec3 tip;
+    glm::vec3 base_left;
+    glm::vec3 base_right;
+
+    if (positive_x_aligned) {
+        tip = {half_width, half_height, 0.0f};         // top right
+        base_left = {-half_width, -half_height, 0.0f}; // bottom left
+        base_right = {half_width, -half_height, 0.0f}; // bottom right
+    } else {
+        tip = {-half_width, half_height, 0.0f};        // top left
+        base_left = {-half_width, -half_height, 0.0f}; // bottom left
+        base_right = {half_width, -half_height, 0.0f}; // bottom right
+    }
+
+    std::vector<glm::vec3> vertices = {tip, base_left, base_right};
+    std::vector<unsigned int> indices = {0, 1, 2}; // CCW
+
+    return {indices, vertices};
 }
 
 draw_info::IndexedVertexPositions generate_rectangle_between_2d(const glm::vec2 &p1, const glm::vec2 &p2,
-                                                                float thickness) {
+                                                                float thickness, Plane plane) {
     glm::vec2 dir = p2 - p1;
     float length = glm::length(dir);
     if (length == 0.0f) {
@@ -127,22 +179,111 @@ draw_info::IndexedVertexPositions generate_rectangle_between_2d(const glm::vec2 
     glm::vec2 dir_norm = glm::normalize(dir);
     glm::vec2 perp = glm::vec2(-dir_norm.y, dir_norm.x) * (thickness / 2.0f);
 
-    // Convert 2D points to 3D with z = 0
-    glm::vec3 p1_left = glm::vec3(p1 - perp, 0.0f);
-    glm::vec3 p1_right = glm::vec3(p1 + perp, 0.0f);
-    glm::vec3 p2_left = glm::vec3(p2 - perp, 0.0f);
-    glm::vec3 p2_right = glm::vec3(p2 + perp, 0.0f);
+    glm::vec3 p1_left, p1_right, p2_left, p2_right;
 
-    std::vector<glm::vec3> vertices = {
-        p1_left,  // 0
-        p1_right, // 1
-        p2_right, // 2
-        p2_left   // 3
-    };
+    switch (plane) {
+    case Plane::XY:
+        p1_left = glm::vec3(p1 - perp, 0.0f);
+        p1_right = glm::vec3(p1 + perp, 0.0f);
+        p2_left = glm::vec3(p2 - perp, 0.0f);
+        p2_right = glm::vec3(p2 + perp, 0.0f);
+        break;
+    case Plane::XZ:
+        p1_left = glm::vec3(p1.x - perp.x, 0.0f, p1.y - perp.y);
+        p1_right = glm::vec3(p1.x + perp.x, 0.0f, p1.y + perp.y);
+        p2_left = glm::vec3(p2.x - perp.x, 0.0f, p2.y - perp.y);
+        p2_right = glm::vec3(p2.x + perp.x, 0.0f, p2.y + perp.y);
+        break;
+    case Plane::YZ:
+        p1_left = glm::vec3(0.0f, p1.x - perp.x, p1.y - perp.y);
+        p1_right = glm::vec3(0.0f, p1.x + perp.x, p1.y + perp.y);
+        p2_left = glm::vec3(0.0f, p2.x - perp.x, p2.y - perp.y);
+        p2_right = glm::vec3(0.0f, p2.x + perp.x, p2.y + perp.y);
+        break;
+    }
 
+    std::vector<glm::vec3> vertices = {p1_left, p1_right, p2_right, p2_left};
     std::vector<unsigned int> indices = {0, 1, 2, 2, 3, 0};
 
     return {indices, vertices};
+}
+
+draw_info::IndexedVertexPositions generate_rectangle_between(const glm::vec3 &p1, const glm::vec3 &p2, float thickness,
+                                                             const glm::vec3 &normal) {
+    glm::vec3 dir = p2 - p1;
+    float length = glm::length(dir);
+    if (length == 0.0f) {
+        throw std::invalid_argument("Points must not be identical.");
+    }
+
+    glm::vec3 dir_norm = glm::normalize(dir);
+    glm::vec3 normal_norm = glm::normalize(normal);
+
+    // compute a vector perpendicular to dir and in the plane defined by normal
+    glm::vec3 perp = glm::normalize(glm::cross(normal_norm, dir_norm)) * (thickness / 2.0f);
+
+    glm::vec3 p1_left = p1 - perp;
+    glm::vec3 p1_right = p1 + perp;
+    glm::vec3 p2_left = p2 - perp;
+    glm::vec3 p2_right = p2 + perp;
+
+    std::vector<glm::vec3> vertices = {p1_left, p1_right, p2_right, p2_left};
+    std::vector<unsigned int> indices = {0, 1, 2, 2, 3, 0};
+
+    return {indices, vertices};
+}
+
+draw_info::IndexedVertexPositions connect_points_by_rectangles_2d(const std::vector<glm::vec2> &points, float thickness,
+                                                                  Plane plane) {
+    if (points.size() < 2)
+        return {};
+
+    std::vector<draw_info::IndexedVertexPositions> all_rects;
+    all_rects.reserve(points.size() - 1);
+
+    for (size_t i = 0; i < points.size() - 1; i++) {
+        const auto &pa = points[i];
+        const auto &pb = points[i + 1];
+        all_rects.push_back(generate_rectangle_between_2d(pa, pb, thickness, plane));
+    }
+
+    return merge_ivps(all_rects);
+}
+
+std::vector<draw_info::IndexedVertexPositions> connect_points_by_rectangles_split(const std::vector<glm::vec3> &points,
+                                                                                  float thickness,
+                                                                                  const glm::vec3 &normal,
+                                                                                  bool share_edges) {
+    if (points.size() < 2)
+        return {};
+
+    std::vector<draw_info::IndexedVertexPositions> all_rects;
+    all_rects.reserve(points.size() - 1);
+
+    draw_info::IndexedVertexPositions last_ivp;
+
+    for (size_t i = 0; i < points.size() - 1; i++) {
+        const auto &pa = points[i];
+        const auto &pb = points[i + 1];
+
+        auto rect = generate_rectangle_between(pa, pb, thickness, normal);
+
+        if (share_edges && i > 0) {
+            // replace first two vertices with the last two vertices of the previous rectangle
+            rect.xyz_positions[0] = last_ivp.xyz_positions[3]; // previous p2_left -> current p1_left
+            rect.xyz_positions[1] = last_ivp.xyz_positions[2]; // previous p2_right -> current p1_right
+        }
+
+        last_ivp = rect;
+        all_rects.push_back(rect);
+    }
+
+    return all_rects;
+}
+
+draw_info::IndexedVertexPositions connect_points_by_rectangles(const std::vector<glm::vec3> &points, float thickness,
+                                                               const glm::vec3 &normal, bool share_edges) {
+    return merge_ivps(connect_points_by_rectangles_split(points, thickness, normal, share_edges));
 }
 
 bool are_valid_rectangle_corners(const glm::vec3 &top_left, const glm::vec3 &top_right, const glm::vec3 &bottom_left,
@@ -202,7 +343,6 @@ Grid::Grid(int rows, int cols, const Rectangle &rect)
 
 // TODO: probably swap the order here?
 Rectangle Grid::get_at(int col, int row) const {
-
     if (row < 0 || row >= rows || col < 0 || col >= cols) {
         throw std::out_of_range("Index out of range");
     }
@@ -332,7 +472,6 @@ Rectangle create_rectangle_from_center(const glm::vec3 &center, float width, flo
 }
 
 draw_info::IndexedVertexPositions AxisAlignedBoundingBox::get_ivp() {
-
     auto corners = get_corners();
 
     // Bottom face (z = min.z)
@@ -389,7 +528,6 @@ draw_info::IndexedVertexPositions triangulate_ngon(const NGon &ngon) {
     return draw_info::IndexedVertexPositions(indices, xyz_positions);
 }
 
-// Connect two Ngons dynamically
 draw_info::IndexedVertexPositions connect_ngons(const NGon &a, const NGon &b) {
     auto capA = triangulate_ngon(a);
     auto capB = triangulate_ngon(b);
@@ -535,19 +673,19 @@ std::vector<Rectangle> weighted_subdivision(const Rectangle &rect, const std::ve
     std::vector<Rectangle> subrectangles;
     float total_weight = 0.0f;
 
-    // Calculate total weight
+    // calculate total weight
     for (auto weight : weights) {
         total_weight += static_cast<float>(weight);
     }
     bool vertical = cut_direction == CutDirection::vertical;
     bool horizontal = cut_direction == CutDirection::horizontal;
 
-    // Initialize start position for either the x or y component, for horizontal cuts we start at the top of the rect,
-    // for vertical cuts we start at the left side
+    // initialize start position for either the x or y component, for horizontal cuts we start at the top of the
+    // rect, for vertical cuts we start at the left side
     float start_position = (horizontal) ? rect.center.y + rect.height / 2 : rect.center.x - rect.width / 2;
     float current_position = start_position;
 
-    // Generate subrectangles by starting from the start position and doing sequential cuts
+    // generate subrectangles by starting from the start position and doing sequential cuts
     for (size_t i = 0; i < weights.size(); ++i) {
         float subdivision_size =
             (static_cast<float>(weights[i]) / total_weight) * (not vertical ? rect.height : rect.width);
@@ -719,8 +857,24 @@ draw_info::IndexedVertexPositions generate_rectangle(float center_x, float cente
             generate_rectangle_vertices_with_z(center_x, center_y, center_z, width, height)};
 }
 
-std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_y, float width, float height) {
+draw_info::IndexedVertexPositions generate_rectangle(const glm::vec3 &center, const glm::vec3 &u, const glm::vec3 &v) {
+    draw_info::IndexedVertexPositions rect;
 
+    // four corners in counter-clockwise order
+    glm::vec3 p0 = center - u - v;
+    glm::vec3 p1 = center + u - v;
+    glm::vec3 p2 = center + u + v;
+    glm::vec3 p3 = center - u + v;
+
+    rect.xyz_positions = {p0, p1, p2, p3};
+
+    // two triangles: (p0, p1, p2) and (p0, p2, p3)
+    rect.indices = {0, 1, 2, 0, 2, 3};
+
+    return rect;
+}
+
+std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_y, float width, float height) {
     float half_width = width / (float)2;
     float half_height = height / (float)2;
 
@@ -735,7 +889,6 @@ std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_
 
 std::vector<glm::vec3> generate_rectangle_vertices_with_z(float center_x, float center_y, float center_z, float width,
                                                           float height) {
-
     float half_width = width / (float)2;
     float half_height = height / (float)2;
 
@@ -999,6 +1152,28 @@ draw_info::IVPNormals generate_box(float size_x, float size_y, float size_z) {
     }
 
     return draw_info::IVPNormals(std::move(indices), std::move(vertices), std::move(normals));
+}
+
+draw_info::IndexedVertexPositions generate_wedge(float width, float height, float depth, float tip_offset) {
+    // generate bottom triangle at z = -depth/2
+    auto tri_a_ivp = generate_triangle_with_tip_offset(width, height, tip_offset);
+    std::vector<glm::vec3> tri_a_pts;
+    for (const auto &v : tri_a_ivp.xyz_positions) {
+        tri_a_pts.push_back(glm::vec3(v.x, v.y, v.z - depth * 0.5f));
+    }
+
+    // generate top triangle at z = +depth/2
+    auto tri_b_ivp = generate_triangle_with_tip_offset(width, height, tip_offset);
+    std::vector<glm::vec3> tri_b_pts;
+    for (const auto &v : tri_b_ivp.xyz_positions) {
+        tri_b_pts.push_back(glm::vec3(v.x, v.y, v.z + depth * 0.5f));
+    }
+
+    // wrap in ngons
+    NGon a(tri_a_pts);
+    NGon b(tri_b_pts);
+
+    return connect_ngons(a, b);
 }
 
 draw_info::IVPNormals generate_cone(int segments, float height, float radius) {
@@ -1519,22 +1694,6 @@ std::vector<std::pair<glm::vec3, glm::vec3>> sample_points_and_tangents(std::fun
     return samples;
 }
 
-draw_info::IndexedVertexPositions connect_points_by_rectangles(const std::vector<glm::vec2> &points) {
-    if (points.size() < 2)
-        return {};
-
-    std::vector<draw_info::IndexedVertexPositions> all_rects;
-    all_rects.reserve(points.size() - 1);
-
-    for (size_t i = 0; i < points.size() - 1; i++) {
-        const auto &pa = points[i];
-        const auto &pb = points[i + 1];
-        all_rects.push_back(generate_rectangle_between_2d(pa, pb, 0.001));
-    }
-
-    return merge_ivps(all_rects);
-}
-
 draw_info::IndexedVertexPositions generate_function_visualization(std::function<glm::vec3(double)> f, double t_start,
                                                                   double t_end, double step_size,
                                                                   double finite_diff_delta, float radius,
@@ -1545,7 +1704,6 @@ draw_info::IndexedVertexPositions generate_function_visualization(std::function<
 
 draw_info::IndexedVertexPositions generate_segmented_cylinder(const std::vector<std::pair<glm::vec3, glm::vec3>> &path,
                                                               float radius, int segments) {
-
     std::vector<glm::vec3> vertices;
     std::vector<unsigned int> indices;
 
@@ -1778,9 +1936,9 @@ std::vector<glm::vec3> generate_rectangle_vertices_from_points(const glm::vec3 &
 
 std::vector<unsigned int> generate_rectangle_indices() {
     return {
-        // note that we start from 0!
-        0, 1, 3, // first triangle
-        1, 2, 3  // second triangle
+        // ordering to make them ccw
+        0, 3, 1, // first triangle: top right -> top left -> bottom right
+        1, 3, 2  // second triangle: bottom right -> top left -> bottom left
     };
 }
 
@@ -1912,7 +2070,6 @@ draw_info::IndexedVertexPositions generate_star(float center_x, float center_y, 
 
 std::vector<glm::vec3> generate_star_vertices(float center_x, float center_y, float outer_radius, float inner_radius,
                                               int num_star_tips, bool blunt_tips) {
-
     int star_multiplier = (blunt_tips ? 3 : 2);
     int num_vertices_required = star_multiplier * num_star_tips;
 
@@ -1997,9 +2154,15 @@ draw_info::IndexedVertexPositions generate_3d_arrow_with_ratio(const glm::vec3 &
     return generate_3d_arrow(start, end, num_segments, stem_thickness);
 }
 
+draw_info::IndexedVertexPositions generate_3d_axes() {
+    auto x = generate_3d_arrow_with_ratio(glm_utils::zero_R3, glm_utils::x);
+    auto y = generate_3d_arrow_with_ratio(glm_utils::zero_R3, glm_utils::y);
+    auto z = generate_3d_arrow_with_ratio(glm_utils::zero_R3, glm_utils::z);
+    return merge_ivps({x, y, z});
+}
+
 draw_info::IndexedVertexPositions generate_3d_arrow(const glm::vec3 &start, const glm::vec3 &end, int num_segments,
                                                     float stem_thickness) {
-
     glm::vec3 direction = end - start;
 
     float length = glm::length(direction);
@@ -2047,7 +2210,6 @@ draw_info::IndexedVertexPositions generate_3d_arrow(const glm::vec3 &start, cons
  */
 
 std::vector<glm::vec3> generate_arrow_vertices(glm::vec2 start, glm::vec2 end, float stem_thickness, float tip_length) {
-
     float half_thickness = stem_thickness / (float)2;
 
     glm::vec2 start_to_end = end - start;
