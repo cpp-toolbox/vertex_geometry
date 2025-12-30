@@ -1680,6 +1680,27 @@ glm::vec3 compute_tangent_finite_difference(std::function<glm::vec3(double)> f, 
     return (forward - backward) / static_cast<float>(2.0f * delta); // central difference
 }
 
+/**
+ * @brief Samples a parametric curve and computes tangents at each sample point.
+ *
+ * This function evaluates a given parametric curve function `f(t)` at regular intervals
+ * from `t_start` to `t_end` (inclusive) and computes the tangent vectors at each point
+ * using finite differences.
+ *
+ * @param f A function that takes a parameter `t` and returns a 3D point (`glm::vec3`) on the curve.
+ * @param t_start The starting value of the parameter `t`.
+ * @param t_end The ending value of the parameter `t`.
+ * @param step_size The increment in `t` between consecutive samples.
+ * @param finite_diff_delta A small delta used for computing the tangent via finite differences.
+ *
+ * @return std::vector<std::pair<glm::vec3, glm::vec3>>
+ *         A vector of pairs, where each pair contains:
+ *         - first: the sampled point on the curve (`glm::vec3`)
+ *         - second: the tangent vector at that point (`glm::vec3`)
+ *
+ * @note The tangent vectors are approximated using finite differences. For more accurate
+ *       derivatives, consider using analytical derivatives if available.
+ */
 std::vector<std::pair<glm::vec3, glm::vec3>> sample_points_and_tangents(std::function<glm::vec3(double)> f,
                                                                         double t_start, double t_end, double step_size,
                                                                         double finite_diff_delta) {
@@ -1715,11 +1736,72 @@ draw_info::IndexedVertexPositions generate_segmented_cylinder(const std::vector<
     for (size_t i = 0; i < path.size() - 1; ++i) {
         glm::vec3 p0 = path[i].first;
         glm::vec3 p1 = path[i + 1].first;
+        // why are we doing this don't we store that in path, todo later
         glm::vec3 tangent = glm::normalize(p1 - p0);
 
         float angle_increment = 2.0f * std::numbers::pi / segments;
 
-        // Generate an arbitrary perpendicular vector using Gram-Schmidt
+        // generate an arbitrary perpendicular vector using gram-schmidt
+        glm::vec3 arbitrary = (std::abs(tangent.x) > 0.9f) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0);
+        glm::vec3 normal = glm::normalize(glm::cross(tangent, arbitrary));
+        glm::vec3 binormal = glm::normalize(glm::cross(tangent, normal));
+
+        std::vector<unsigned int> segment_indices;
+
+        for (int j = 0; j < segments; ++j) {
+            float angle = j * angle_increment;
+            glm::vec3 offset = radius * (cos(angle) * normal + sin(angle) * binormal);
+
+            vertices.push_back(p0 + offset);
+            vertices.push_back(p1 + offset);
+
+            if (j > 0) {
+                // Form two triangles per segment
+                indices.push_back(vertex_offset + 2 * (j - 1));
+                indices.push_back(vertex_offset + 2 * j);
+                indices.push_back(vertex_offset + 2 * (j - 1) + 1);
+
+                indices.push_back(vertex_offset + 2 * (j - 1) + 1);
+                indices.push_back(vertex_offset + 2 * j);
+                indices.push_back(vertex_offset + 2 * j + 1);
+            }
+        }
+
+        // Close the ring
+        indices.push_back(vertex_offset + 2 * (segments - 1));
+        indices.push_back(vertex_offset);
+        indices.push_back(vertex_offset + 2 * (segments - 1) + 1);
+
+        indices.push_back(vertex_offset + 2 * (segments - 1) + 1);
+        indices.push_back(vertex_offset);
+        indices.push_back(vertex_offset + 1);
+
+        vertex_offset += 2 * segments;
+    }
+
+    return {indices, vertices};
+}
+
+draw_info::IndexedVertexPositions generate_segmented_cylinder(const std::vector<glm::vec3> &path, float radius,
+                                                              int segments) {
+
+    std::vector<glm::vec3> vertices;
+    std::vector<unsigned int> indices;
+
+    if (path.size() < 2)
+        return {indices, vertices};
+
+    unsigned int vertex_offset = 0;
+
+    for (size_t i = 0; i < path.size() - 1; ++i) {
+        glm::vec3 p0 = path[i];
+        glm::vec3 p1 = path[i + 1];
+        // why are we doing this don't we store that in path, todo later
+        glm::vec3 tangent = glm::normalize(p1 - p0);
+
+        float angle_increment = 2.0f * std::numbers::pi / segments;
+
+        // generate an arbitrary perpendicular vector using gram-schmidt
         glm::vec3 arbitrary = (std::abs(tangent.x) > 0.9f) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0);
         glm::vec3 normal = glm::normalize(glm::cross(tangent, arbitrary));
         glm::vec3 binormal = glm::normalize(glm::cross(tangent, normal));
@@ -2268,6 +2350,42 @@ std::vector<unsigned int> generate_arrow_indices() { return {0, 1, 2, 2, 1, 3, 4
 draw_info::IndexedVertexPositions generate_2d_arrow(glm::vec2 start, glm::vec2 end, float stem_thickness,
                                                     float tip_length) {
     return {generate_arrow_indices(), generate_arrow_vertices(start, end, stem_thickness, tip_length)};
+}
+
+draw_info::IndexedVertexPositions generate_arrow_path(const std::vector<glm::vec3> &points, int num_segments,
+                                                      float length_thickness_ratio) {
+
+    // needs at least 2 points to generate an arrow
+    if (points.size() < 2) {
+        return draw_info::IndexedVertexPositions{};
+    }
+
+    std::vector<draw_info::IndexedVertexPositions> arrow_segments;
+    arrow_segments.reserve(points.size() - 1);
+
+    int num_consecutive_identical_points = 0;
+    std::optional<glm::vec3> last_non_zero_dir;
+    for (std::size_t i = 0; i + 1 < points.size(); ++i) {
+        const glm::vec3 &start = points[i];
+        const glm::vec3 &end = points[i + 1];
+        const glm::vec3 dir = end - start;
+
+        if (start == end) {
+            global_logger.info("found identical points");
+            num_consecutive_identical_points += 1;
+
+            if (last_non_zero_dir) {
+                NGon ngon(5, static_cast<float>(num_consecutive_identical_points) / 10, *last_non_zero_dir, start);
+                arrow_segments.push_back(triangulate_ngon(ngon));
+            }
+        } else {
+            num_consecutive_identical_points = 0;
+            last_non_zero_dir = dir;
+            arrow_segments.push_back(generate_3d_arrow_with_ratio(start, end, num_segments, length_thickness_ratio));
+        }
+    }
+
+    return merge_ivps(arrow_segments);
 }
 
 void scale_vertices_in_place(std::vector<glm::vec3> &vertices, const glm::vec3 &scale_vector, const glm::vec3 &origin) {

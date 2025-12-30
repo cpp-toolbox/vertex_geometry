@@ -36,6 +36,9 @@ class NGon {
         if (n_vertices < 3)
             throw std::runtime_error("Ngon must have at least 3 vertices");
 
+        if (normal == glm_utils::zero_R3)
+            throw std::runtime_error("Normal must be non-zero");
+
         points.resize(n_vertices);
         glm::vec3 u, v;
         make_basis_from_normal(normal, u, v);
@@ -598,13 +601,55 @@ draw_info::IVPNormals generate_terrain(float size_x = 100.0f, float size_z = 100
                                        int octaves = 4, float persistence = 0.5f, float scale = 50.0f,
                                        float seed = 0.0f);
 
+draw_info::IndexedVertexPositions connect_points_by_rectangles(const std::vector<glm::vec2> &points);
+
+/**
+ * @brief Generates a 3D cylinder mesh visualizing a parametric function.
+ *
+ * This function samples a parametric curve `f(t)` over the interval `[t_start, t_end]`
+ * using a specified `step_size` and computes tangent vectors via finite differences.
+ * It then constructs a segmented cylinder along the sampled points to visualize the curve in 3D.
+ *
+ * @param f The parametric function to visualize. It takes a `double t` and returns a 3D point (`glm::vec3`).
+ * @param t_start The starting value of the parameter `t`.
+ * @param t_end The ending value of the parameter `t`.
+ * @param step_size The increment in `t` between consecutive samples.
+ * @param finite_diff_delta A small delta used for approximating the tangent vector via finite differences.
+ * @param radius The radius of the cylinder to generate along the curve.
+ * @param segments The number of vertices per circular cross-section of the cylinder.
+ *
+ * @note This function internally uses `sample_points_and_tangents` to sample the curve
+ *       and `generate_segmented_cylinder` to generate the mesh. At least two sample points
+ *       are required for a valid cylinder mesh.
+ */
 draw_info::IndexedVertexPositions generate_function_visualization(std::function<glm::vec3(double)> f, double t_start,
                                                                   double t_end, double step_size,
                                                                   double finite_diff_delta, float radius = .25,
                                                                   int segments = 8);
 
+/**
+ * @brief Generates a segmented cylinder mesh along a given 3D path.
+ *
+ * This function constructs a cylindrical mesh that follows the 3D curve defined by `path`.
+ * The cylinder is built by connecting consecutive points in the path with circular cross-sections.
+ * Each segment of the cylinder is approximated using `segments` vertices per ring, forming triangles
+ * to create a closed surface.
+ *
+ * @param path A vector of pairs representing the curve. Each pair contains:
+ *             - first: the position of a point on the path (`glm::vec3`)
+ *             - second: the tangent at that point (`glm::vec3`) [not used in this function, can be used externally]
+ * @param radius The radius of the cylinder.
+ * @param segments The number of vertices per circular cross-section (higher values produce smoother cylinders).
+ *
+ * @note The function uses the Gram-Schmidt process to compute an arbitrary perpendicular frame (normal and binormal)
+ *       for each segment to construct the circular cross-sections. At least two points in `path` are required;
+ *       otherwise, an empty mesh is returned.
+ */
 draw_info::IndexedVertexPositions generate_segmented_cylinder(const std::vector<std::pair<glm::vec3, glm::vec3>> &path,
                                                               float radius, int segments);
+
+draw_info::IndexedVertexPositions generate_segmented_cylinder(const std::vector<glm::vec3> &path, float radius,
+                                                              int segments);
 
 draw_info::IndexedVertexPositions generate_quad_strip(const std::vector<std::pair<glm::vec3, glm::vec3>> &lines);
 
@@ -688,21 +733,84 @@ std::vector<glm::vec3> generate_rectangle_vertices_from_points(const glm::vec3 &
                                                                const glm::vec3 &surface_normal, float height = 1);
 
 /**
- * @brief generate axes showing x y and
+ * @brief Generates a 3D arrow between two points with a thickness defined by a length-to-thickness ratio.
  *
+ * This function computes a 3D arrow from @p start to @p end by determining the arrow's stem thickness
+ * as a fixed ratio of the total arrow length. The computed thickness is then forwarded to
+ * generate_3d_arrow(), which performs the actual geometry construction.
+ *
+ * @param start The starting point of the arrow in 3D space.
+ * @param end The end point of the arrow in 3D space.
+ * @param num_segments The number of radial subdivisions used when generating the arrow’s cylindrical
+ *                     and conical components.
+ * @param length_thickness_ratio The ratio of arrow length to stem thickness. For example,
+ *                               a value of 0.05 makes the stem thickness 5% of the arrow length.
+ *
+ * @return A draw_info::IndexedVertexPositions object containing the indexed vertices and topology
+ *         describing the final arrow geometry.
+ *
+ *
+ * @see generate_3d_arrow()
  */
-
 draw_info::IndexedVertexPositions generate_3d_arrow_with_ratio(const glm::vec3 &start, const glm::vec3 &end,
                                                                int num_segments = 16,
                                                                float length_thickness_ratio = 0.07);
 
 draw_info::IndexedVertexPositions generate_3d_axes();
 
+/**
+ * @brief Generates a full 3D arrow mesh between two points with a specified stem thickness.
+ *
+ * This function constructs a complete arrow consisting of:
+ *   - a cylindrical stem running from @p start to the base of the tip, and
+ *   - a conical tip reaching from the end of the stem to @p end.
+ *
+ * The tip length is defined as 30% of the total arrow length, and the tip base radius is twice the
+ * stem thickness. The function generates geometry for both components and merges them into a single
+ * IndexedVertexPositions structure.
+ *
+ * @param start The starting point of the arrow in 3D space.
+ * @param end The endpoint of the arrow tip.
+ * @param num_segments The number of radial segments used for the cylinder and cone. Higher values
+ *                     result in smoother geometry.
+ * @param stem_thickness The radius (thickness) of the cylindrical stem portion of the arrow.
+ *
+ * @return A draw_info::IndexedVertexPositions object representing the complete arrow mesh, including
+ *         both stem and tip geometry.
+ *
+ * @see generate_3d_arrow_with_ratio()
+ * @see vertex_geometry::generate_cylinder_between()
+ * @see vertex_geometry::generate_cone_between()
+ *
+ * @note this is probably deprecated in favor of the generate_3d_arrow_with_ratio
+ */
 draw_info::IndexedVertexPositions generate_3d_arrow(const glm::vec3 &start, const glm::vec3 &end, int num_segments = 16,
                                                     float stem_thickness = 0.12);
 
 draw_info::IndexedVertexPositions generate_2d_arrow(glm::vec2 start, glm::vec2 end, float stem_thickness = 0.05,
                                                     float tip_length = .05);
+
+/**
+ * @brief Generates a combined 3D arrow path where each arrow points
+ *        from one point to the next in the given sequence.
+ *
+ * This function iterates over the provided @p points and constructs
+ * a 3D arrow for every consecutive pair of points using
+ * generate_3d_arrow_with_ratio(). The resulting individual arrow
+ * meshes are then combined into a single
+ * draw_info::IndexedVertexPositions structure using merge_ivps().
+ *
+ * If the input contains fewer than two points, an empty geometry
+ * (default-constructed IndexedVertexPositions) is returned.
+ *
+ * @param points A list of 3D positions through which the arrows should be drawn.
+ * @param num_segments Number of segments used for cylindrical portions of each arrow.
+ * @param length_thickness_ratio Thickness ratio used for arrow stem relative to arrow length.
+ *
+ * @return A merged IndexedVertexPositions containing all arrows along the path.
+ */
+draw_info::IndexedVertexPositions generate_arrow_path(const std::vector<glm::vec3> &points, int num_segments = 16,
+                                                      float length_thickness_ratio = 0.07f);
 
 std::vector<glm::vec3> generate_arrow_vertices(glm::vec2 start, glm::vec2 end, float stem_thickness = 0.05,
                                                float tip_length = .05);
