@@ -2,6 +2,7 @@
 #define VERTEX_GEOMETRY_HPP
 
 #include <glm/glm.hpp>
+#include <type_traits>
 #include <vector>
 #include <cmath>
 #include <functional>
@@ -22,7 +23,7 @@ enum class TriangulationMode {
 
 class NGon {
   public:
-    // Construct from explicit points
+    // Construct from explicit points, also the points must be planar...
     NGon(const std::vector<glm::vec3> &pts, TriangulationMode mode = TriangulationMode::CentralFan)
         : points(pts), triangulation_mode(mode) {
         if (points.size() < 3)
@@ -106,6 +107,9 @@ class AxisAlignedBoundingBox {
         }
     }
 
+    AxisAlignedBoundingBox(const glm::vec3 &min, const glm::vec3 &max)
+        : vertex_geometry::AxisAlignedBoundingBox(std::vector{min, max}) {}
+
     /** @brief The minimum corner of the bounding box. */
     glm::vec3 min;
 
@@ -153,11 +157,29 @@ class AxisAlignedBoundingBox {
      */
     glm::vec3 get_minx_maxy_position() const { return glm::vec3(min.x, max.y, 0.0f); }
 
+    double volume() const { return (max.x - min.x) * (max.y - min.y) * (max.z - min.z); }
+
+    std::optional<AxisAlignedBoundingBox> intersection(const AxisAlignedBoundingBox &other) const {
+        double ix_min = std::max(min.x, other.min.x);
+        double iy_min = std::max(min.y, other.min.y);
+        double iz_min = std::max(min.z, other.min.z);
+
+        double ix_max = std::min(max.x, other.max.x);
+        double iy_max = std::min(max.y, other.max.y);
+        double iz_max = std::min(max.z, other.max.z);
+
+        if (ix_min <= ix_max && iy_min <= iy_max && iz_min <= iz_max) {
+            return AxisAlignedBoundingBox{{ix_min, iy_min, iz_min}, {ix_max, iy_max, iz_max}};
+        } else {
+            return std::nullopt;
+        }
+    }
+
     /**
      * @brief Converts the bounding box into indexed vertex positions for drawing.
      * @return A draw_info::IndexedVertexPositions object representing the box geometry.
      */
-    draw_info::IndexedVertexPositions get_ivp();
+    draw_info::IndexedVertexPositions get_ivp() const;
 };
 
 class AxisAlignedBoundingBox2D {
@@ -184,19 +206,147 @@ class AxisAlignedBoundingBox2D {
     // draw_info::IndexedVertexPositions get_ivp();
 };
 
+draw_info::IndexedVertexPositions triangulate(const std::vector<glm::vec3> &pts,
+                                              TriangulationMode triangulation_mode = TriangulationMode::CentralFan);
 draw_info::IndexedVertexPositions triangulate_ngon(const NGon &ngon);
 draw_info::IndexedVertexPositions connect_ngons(const NGon &a, const NGon &b);
 
+/**
+ * @brief Specifies how size parameters are interpreted for geometric shapes.
+ *
+ * This enum is used to disambiguate constructors or functions that accept
+ * size parameters for a Rectangle (or other geometric objects).
+ *
+ * An example in the context of a rectangle where the provided `u` and `v` values represent half-extents or full
+ * extents.
+ *
+ * - `Extent::half` : Values represent the half-length along each axis. For example, a
+ *   `u_size` of 1 means the rectangle extends from -1 to 1 along the u-axis (length 2).
+ * - `Extent::full` : Values represent the full length along each axis. For example, a
+ *   `u_size` of 2 means the rectangle extends from -1 to 1 along the u-axis (length 2).
+ *
+ * Most of the time you use half extents when you
+ *
+ * @code
+ * // Example: create a rectangle using half-extents
+ * Rectangle r1({0, 0, 0}, 1.0f, 2.0f, Extent::half);
+ * // u-size = 1 (half-length), v-size = 2 (half-length)
+ *
+ * // Example: create a rectangle using full dimensions
+ * Rectangle r2({0, 0, 0}, 2.0f, 4.0f, Extent::full);
+ * // u-size = 2 (full-length), v-size = 4 (full-length)
+ *
+ * // Internally, both constructors store half-extents for consistent representation
+ * @endcode
+ *
+ * @note Using this enum makes constructor intent explicit and prevents accidental
+ * misuse of size parameters.
+ *
+ * @note The biggest thing to realize is that for some constant c, a geometric object with half-extent equal to c, will
+ * be twice as large as the one with the full extent equal to c
+ */
+enum class ExtentMode { half, full };
+
+enum class Plane {
+    XY,
+    XZ,
+    YZ,
+    YX = XY, // optional alias
+    ZX = XZ, // optional alias
+    ZY = YZ  // optional alias
+};
+
+// TODO: would it be beneficial to have a Rectangle2D class as well?
 class Rectangle {
+
   public:
+    ExtentMode extent_mode = ExtentMode::half;
+
+  private:
+    // u and v are vectors that go from the center to the edge of the rectangle, and are definitionally half-extents
+    // TODO: these probably don't have to be private anymore, but we need setters for them.
+    glm::vec3 u;
+    glm::vec3 v;
+
+  public:
+    /**
+     * @brief Constructs a Rectangle given a center and two edge vectors. A rectangle has corners with angles all equal
+     * to 90 degrees, and thus is a subset of all possible quads.
+     *
+     * @note If the input `v` is not perpendicular to `u`, it will be automatically
+     *       orthogonalized. This ensures that the resulting rectangle is a true rectangle
+     *       (not a parallelogram), but the final direction of `v` may differ from the original input.
+     *
+     * @param center The center position of the rectangle.
+     * @param u Vector from the center to one edge along the u axis .
+     * @param v Vector from the center to one edge along the v axis (should be perp to u).
+     */
+    Rectangle(glm::vec3 center, glm::vec3 u, glm::vec3 v, ExtentMode extent_mode = ExtentMode::half)
+        : center(center), extent_mode(extent_mode) {
+
+        this->u = u;
+
+        // make v perpendicular to u if its not
+        glm::vec3 u_dir = glm::normalize(u);           // direction of u
+        glm::vec3 v_proj = glm::dot(v, u_dir) * u_dir; // projection of v onto u
+        this->v = v - v_proj;                          // perpendicular component
+
+        // preserve the original length of v
+        float v_original_length = glm::length(v);
+        this->v = glm::normalize(this->v) * v_original_length;
+    }
+
     // by default we use width height 2 to take up the full [-1, 1] x [-1, 1] ndc space
-    Rectangle(glm::vec3 center = glm::vec3(0), float width = 2, float height = 2)
-        : center(center), width(width), height(height) {}
+    // NOTE: by default the rectangle will be aligned with the XY plane
+    // NOTE: full extents were chosen here because of the fact that many other things rely on this being in full
+    // extents, sometime in the future it would be better for that other code, to rely on an an AABB(2D) and go back to
+    // talking about width and height rather than using generic retangles.
+    Rectangle(glm::vec3 center = glm::vec3(0), float u_size = 2, float v_size = 2,
+              ExtentMode extent_mode = ExtentMode::full)
+        : Rectangle(center, (extent_mode == ExtentMode::half ? u_size : u_size * 0.5f) * glm_utils::x,
+                    (extent_mode == ExtentMode::half ? v_size : v_size * 0.5f) * glm_utils::y, extent_mode) {}
+
+    // TODO: make private and use setters
     glm::vec3 center; // Center position
-    float width;      // Width of the rectangle
-    float height;     // Height of the rectangle
-    // TODO: this needs to be renamed get_ivp right?
-    draw_info::IndexedVertexPositions get_ivs() const;
+
+    // TODO: in the future we can use lazily computed values using Mutable access notification for all dependencies.
+
+    float get_u_extent_size() const {
+        if (extent_mode == ExtentMode::half) {
+            return glm::length(u); // half-extent mode: internal length matches user
+        } else {
+            return glm::length(u) * 2.0f; // full-extent mode: internal is half, multiply by 2
+        }
+    }
+
+    float get_v_extent_size() const {
+        if (extent_mode == ExtentMode::half) {
+            return glm::length(v);
+        } else {
+            return glm::length(v) * 2.0f;
+        }
+    }
+
+    void set_u_extent(float new_u_size) {
+        float factor = (extent_mode == ExtentMode::half) ? 1.0f : 0.5f;
+        if (glm::length(u) > 0.0f) {
+            u = glm::normalize(u) * new_u_size * factor;
+        } else {
+            u = glm_utils::x * new_u_size * factor;
+        }
+    }
+
+    void set_v_extent(float new_v_size) {
+        float factor = (extent_mode == ExtentMode::half) ? 1.0f : 0.5f;
+        if (glm::length(v) > 0.0f) {
+            v = glm::normalize(v) * new_v_size * factor;
+        } else {
+            v = glm_utils::y * new_v_size * factor;
+        }
+    }
+
+    // TODO: should I extract this out so this class has nothing to do with draw info?
+    draw_info::IndexedVertexPositions get_ivp() const;
     friend std::ostream &operator<<(std::ostream &os, const Rectangle &rect);
 
     glm::vec3 get_top_left() const;
@@ -209,7 +359,31 @@ class Rectangle {
     glm::vec3 get_bottom_right() const;
 };
 
-Rectangle expand_rectangle(const Rectangle &rect, float x_expand, float y_expand);
+// TODO: I'm pretty sure all the below logic is for Rectangle2D's, but it works with the current rectangle so leaving
+// it.
+
+/**
+ * @brief Returns a new rectangle with expanded edge-to-edge size along its local axes.
+ *
+ * This function creates a copy of the input rectangle and increases its
+ * extents along the local `u` and `v` axes by the specified amounts.
+ * The expansion is measured in terms of edge-to-edge size.
+ * - orig_u, orig_v: original edge to edge measurment of rect along u, v axes respectively
+ * The new edge to edge size is given by:
+ * - orig_u + 2 * u_addition, orig_v + 2 * v_addition
+ *
+ * Geometrically this modification is made by expanding the edges along the u, v axes respectively by the specified
+ * amount in each direction
+ *
+ * @param rect The original rectangle to expand.
+ * @param u_addition The amount to add to the edge-to-edge size along the rectangle's `u` axis.
+ * @param v_addition The amount to add to the edge-to-edge size along the rectangle's `v` axis.
+ *
+ * @return A new Rectangle with the same center as `rect` but with expanded extents along the `u` and `v` axes.
+ *
+ * @note The original rectangle `rect` is not modified.
+ */
+Rectangle expand_rectangle(const Rectangle &rect, float u_addition, float v_addition);
 
 /**
  * @brief Returns a new rectangle inset by the specified amounts along each axis.
@@ -355,15 +529,7 @@ draw_info::IndexedVertexPositions generate_triangle_with_tip_offset(float width,
 draw_info::IndexedVertexPositions generate_right_angle_triangle(float width, float height,
                                                                 bool positive_x_aligned = true);
 
-enum class Plane {
-    XY,
-    XZ,
-    YZ,
-    YX = XY, // optional alias
-    ZX = XZ, // optional alias
-    ZY = YZ  // optional alias
-};
-
+// TODO: these all need to be renamed to quad, because they're not rectangles!
 draw_info::IndexedVertexPositions generate_rectangle_between_2d(const glm::vec2 &p1, const glm::vec2 &p2,
                                                                 float thickness = 0.01, Plane plane = Plane::XZ);
 
@@ -596,6 +762,7 @@ draw_info::IndexedVertexPositions generate_cylinder_between(const glm::vec3 &p1,
 
 draw_info::IVPNormals generate_icosphere(int subdivisions, float radius);
 
+// TODO: use perlin noise which is in math utils to actually do this cleanly
 draw_info::IVPNormals generate_terrain(float size_x = 100.0f, float size_z = 100.0f, int resolution_x = 50,
                                        int resolution_z = 50, float max_height = 5.0f, float base_height = 0.0f,
                                        int octaves = 4, float persistence = 0.5f, float scale = 50.0f,
@@ -673,7 +840,9 @@ std::vector<glm::vec3> generate_rectangle_vertices(float center_x, float center_
 draw_info::IndexedVertexPositions generate_rectangle(float center_x, float center_y, float center_z, float width,
                                                      float height);
 
-draw_info::IndexedVertexPositions generate_rectangle(const glm::vec3 &center, const glm::vec3 &u, const glm::vec3 &v);
+// NOTE: this should replace all the above rectangles, they are bad.
+draw_info::IndexedVertexPositions generate_rectangle(const glm::vec3 &center, const glm::vec3 &u = glm_utils::x,
+                                                     const glm::vec3 &v = glm_utils::z);
 
 std::vector<glm::vec3> generate_rectangle_vertices_with_z(float center_x, float center_y, float center_z, float width,
                                                           float height);

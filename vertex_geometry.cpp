@@ -21,8 +21,8 @@ namespace vertex_geometry {
 std::ostream &operator<<(std::ostream &os, const Rectangle &rect) {
     os << "Rectangle("
        << "Center: (" << rect.center.x << ", " << rect.center.y << ", " << rect.center.z << "), "
-       << "Width: " << rect.width << ", "
-       << "Height: " << rect.height << ")";
+       << "Width: " << rect.get_u_extent_size() << ", "
+       << "Height: " << rect.get_v_extent_size() << ")";
     return os;
 }
 
@@ -44,8 +44,8 @@ std::string strip_leading_newlines(const std::string &text) {
 
 bool circle_intersects_rect(float cx, float cy, float radius, const Rectangle &rect) {
     // Clamp circle center to rectangle bounds to find the closest point on the rect
-    float closest_x = std::max(rect.center.x, std::min(cx, rect.center.x + rect.width));
-    float closest_y = std::max(rect.center.y, std::min(cy, rect.center.y + rect.height));
+    float closest_x = std::max(rect.center.x, std::min(cx, rect.center.x + rect.get_u_extent_size()));
+    float closest_y = std::max(rect.center.y, std::min(cy, rect.center.y + rect.get_v_extent_size()));
 
     float dx = closest_x - cx;
     float dy = closest_y - cy;
@@ -107,7 +107,7 @@ binary_text_grid_to_rect_grid_split(const std::string &text_grid, const vertex_g
         for (unsigned int col = 0; col < cols; ++col) {
             if (lines[row][col] == '*') {
                 vertex_geometry::Rectangle rect = grid.get_at(col, row);
-                draw_info::IndexedVertexPositions ivp = rect.get_ivs();
+                draw_info::IndexedVertexPositions ivp = rect.get_ivp();
                 ivps.push_back(ivp);
             }
         }
@@ -299,38 +299,34 @@ Rectangle create_rectangle_from_corners(const glm::vec3 top_left, const glm::vec
         throw std::invalid_argument("The points do not form a valid rectangle.");
     }
 
-    // Compute the center of the rectangle as the midpoint of the diagonals
+    // compute the center of the rectangle as the midpoint of the diagonals
     glm::vec3 diag1 = (top_left + bottom_right) / 2.0f;
     glm::vec3 diag2 = (top_right + bottom_left) / 2.0f;
     glm::vec3 center = (diag1 + diag2) / 2.0f;
 
-    // Calculate the width and height using the distance between corners
-    float width = glm::length(top_left - top_right);
-    float height = glm::length(top_left - bottom_left);
+    glm::vec3 right_center = (top_right + bottom_right) / 2.0f;
+    glm::vec3 top_center = (top_left + top_right) / 2.0f;
 
-    // Create and return the Rectangle object
-    Rectangle rect;
-    rect.center = center;
-    rect.width = width;
-    rect.height = height;
+    glm::vec3 u = (right_center - center);
+    glm::vec3 v = (top_center - center);
+
+    Rectangle rect{center, u, v};
 
     return rect;
 }
 
-draw_info::IndexedVertexPositions Rectangle::get_ivs() const {
-    return {
-        generate_rectangle_indices(),
-        generate_rectangle_vertices_with_z(this->center.x, this->center.y, this->center.z, this->width, this->height)};
+draw_info::IndexedVertexPositions Rectangle::get_ivp() const {
+    return generate_rectangle(this->center, this->u, this->v);
 }
 
-glm::vec3 Rectangle::get_top_left() const { return center + glm::vec3(-width / 2.0f, height / 2.0f, 0.0f); }
-glm::vec3 Rectangle::get_top_center() const { return center + glm::vec3(0.0f, height / 2.0f, 0.0f); }
-glm::vec3 Rectangle::get_top_right() const { return center + glm::vec3(width / 2.0f, height / 2.0f, 0.0f); }
-glm::vec3 Rectangle::get_left_center() const { return center + glm::vec3(-width / 2.0f, 0.0f, 0.0f); }
-glm::vec3 Rectangle::get_right_center() const { return center + glm::vec3(width / 2.0f, 0.0f, 0.0f); }
-glm::vec3 Rectangle::get_bottom_left() const { return center + glm::vec3(-width / 2.0f, -height / 2.0f, 0.0f); }
-glm::vec3 Rectangle::get_bottom_center() const { return center + glm::vec3(0.0f, -height / 2.0f, 0.0f); }
-glm::vec3 Rectangle::get_bottom_right() const { return center + glm::vec3(width / 2.0f, -height / 2.0f, 0.0f); }
+glm::vec3 Rectangle::get_top_left() const { return center - u + v; }
+glm::vec3 Rectangle::get_top_center() const { return center + v; }
+glm::vec3 Rectangle::get_top_right() const { return center + u + v; }
+glm::vec3 Rectangle::get_left_center() const { return center - u; }
+glm::vec3 Rectangle::get_right_center() const { return center + u; }
+glm::vec3 Rectangle::get_bottom_left() const { return center - u - v; }
+glm::vec3 Rectangle::get_bottom_center() const { return center - v; }
+glm::vec3 Rectangle::get_bottom_right() const { return center + u - v; }
 
 // Constructor with explicit dimensions and origin
 Grid::Grid(int rows, int cols, float width, float height, float origin_x, float origin_y, float origin_z)
@@ -339,7 +335,8 @@ Grid::Grid(int rows, int cols, float width, float height, float origin_x, float 
 
 // Constructor using a Rectangle
 Grid::Grid(int rows, int cols, const Rectangle &rect)
-    : Grid(rows, cols, rect.width, rect.height, rect.center.x, rect.center.y, rect.center.z) {}
+    : Grid(rows, cols, rect.get_u_extent_size(), rect.get_v_extent_size(), rect.center.x, rect.center.y,
+           rect.center.z) {}
 
 // TODO: probably swap the order here?
 Rectangle Grid::get_at(int col, int row) const {
@@ -471,7 +468,7 @@ Rectangle create_rectangle_from_center(const glm::vec3 &center, float width, flo
     return {center, width, height};
 }
 
-draw_info::IndexedVertexPositions AxisAlignedBoundingBox::get_ivp() {
+draw_info::IndexedVertexPositions AxisAlignedBoundingBox::get_ivp() const {
     auto corners = get_corners();
 
     // Bottom face (z = min.z)
@@ -497,12 +494,17 @@ draw_info::IndexedVertexPositions AxisAlignedBoundingBox::get_ivp() {
     return connect_ngons(bottom_ngon, top_ngon);
 }
 
-draw_info::IndexedVertexPositions triangulate_ngon(const NGon &ngon) {
-    const auto &pts = ngon.get_points();
-    std::vector<glm::vec3> xyz_positions(pts.begin(), pts.end());
+draw_info::IndexedVertexPositions triangulate(const std::vector<glm::vec3> &pts, TriangulationMode triangulation_mode) {
+
+    if (!math_utils::points_are_planar(pts)) {
+        global_logger->error("triangulate: input points are not planar");
+        return {}; // empty result
+    }
+
+    std::vector<glm::vec3> xyz_positions = pts;
     std::vector<unsigned int> indices;
 
-    if (ngon.get_triangulation_mode() == TriangulationMode::CentralFan) {
+    if (triangulation_mode == TriangulationMode::CentralFan) {
         glm::vec3 centroid(0.0f);
         for (const auto &p : pts)
             centroid += p;
@@ -526,6 +528,10 @@ draw_info::IndexedVertexPositions triangulate_ngon(const NGon &ngon) {
     }
 
     return draw_info::IndexedVertexPositions(indices, xyz_positions);
+}
+
+draw_info::IndexedVertexPositions triangulate_ngon(const NGon &ngon) {
+    return triangulate(ngon.get_points(), ngon.get_triangulation_mode());
 }
 
 draw_info::IndexedVertexPositions connect_ngons(const NGon &a, const NGon &b) {
@@ -564,26 +570,32 @@ draw_info::IndexedVertexPositions connect_ngons(const NGon &a, const NGon &b) {
     return draw_info::IndexedVertexPositions(indices, xyz_positions);
 }
 
-Rectangle expand_rectangle(const Rectangle &rect, float x_expand, float y_expand) {
-    Rectangle expanded_rect;
+Rectangle expand_rectangle(const Rectangle &rect, float u_addition, float v_addition) {
+    Rectangle expanded_rect = rect;
     expanded_rect.center = rect.center;
-    expanded_rect.width = rect.width + 2 * x_expand;
-    expanded_rect.height = rect.height + 2 * y_expand;
+    // when the rect is in full extent mode, then our goal is to make the edge to edge width equal to orig + 2 *
+    // addition, thus we have to do this:
+    if (rect.extent_mode == ExtentMode::full) {
+        u_addition *= 2;
+        v_addition *= 2;
+    }
+    expanded_rect.set_u_extent(rect.get_u_extent_size() + u_addition);
+    expanded_rect.set_v_extent(rect.get_v_extent_size() + v_addition);
     return expanded_rect;
 }
 
 Rectangle inset_rectangle(const Rectangle &rect, float x_inset, float y_inset) {
     Rectangle inset_rect;
     inset_rect.center = rect.center;
-    inset_rect.width = std::max(0.0f, rect.width - 2.0f * x_inset);
-    inset_rect.height = std::max(0.0f, rect.height - 2.0f * y_inset);
+    inset_rect.set_u_extent(std::max(0.0f, rect.get_u_extent_size() - 2.0f * x_inset));
+    inset_rect.set_v_extent(std::max(0.0f, rect.get_v_extent_size() - 2.0f * y_inset));
     return inset_rect;
 }
 
 Rectangle scale_rectangle(const Rectangle &rect, float scale) { return scale_rectangle(rect, scale, scale); }
 
 Rectangle scale_rectangle(const Rectangle &rect, float x_scale, float y_scale) {
-    return Rectangle(rect.center, rect.width * x_scale, rect.height * y_scale);
+    return Rectangle(rect.center, rect.get_u_extent_size() * x_scale, rect.get_v_extent_size() * y_scale);
 }
 
 Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float shrink) {
@@ -591,31 +603,36 @@ Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float shrink) {
 }
 
 Rectangle scale_rectangle_from_left_side(const Rectangle &rect, float x_shrink, float y_shrink) {
-    return create_rectangle_from_left_center(rect.get_left_center(), rect.width * x_shrink, rect.height * y_shrink);
+    return create_rectangle_from_left_center(rect.get_left_center(), rect.get_u_extent_size() * x_shrink,
+                                             rect.get_v_extent_size() * y_shrink);
 }
 
 Rectangle scale_rectangle_from_top_side(const Rectangle &rect, float x_shrink, float y_shrink) {
-    return create_rectangle_from_top_center(rect.get_top_center(), rect.width * x_shrink, rect.height * y_shrink);
+    return create_rectangle_from_top_center(rect.get_top_center(), rect.get_u_extent_size() * x_shrink,
+                                            rect.get_v_extent_size() * y_shrink);
 }
 
 Rectangle scale_rectangle_from_top_left(const Rectangle &rect, float x_shrink, float y_shrink) {
-    return create_rectangle_from_top_left(rect.get_top_left(), rect.width * x_shrink, rect.height * y_shrink);
+    return create_rectangle_from_top_left(rect.get_top_left(), rect.get_u_extent_size() * x_shrink,
+                                          rect.get_v_extent_size() * y_shrink);
 }
 
 Rectangle scale_rectangle_from_top_right(const Rectangle &rect, float x_shrink, float y_shrink) {
-    return create_rectangle_from_top_right(rect.get_top_right(), rect.width * x_shrink, rect.height * y_shrink);
+    return create_rectangle_from_top_right(rect.get_top_right(), rect.get_u_extent_size() * x_shrink,
+                                           rect.get_v_extent_size() * y_shrink);
 }
 
 Rectangle scale_rectangle_from_bottom_left(const Rectangle &rect, float x_shrink, float y_shrink) {
-    return create_rectangle_from_bottom_left(rect.get_bottom_left(), rect.width * x_shrink, rect.height * y_shrink);
+    return create_rectangle_from_bottom_left(rect.get_bottom_left(), rect.get_u_extent_size() * x_shrink,
+                                             rect.get_v_extent_size() * y_shrink);
 }
 
 Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset) {
     Rectangle new_rect = rect;
 
     // Slide the rectangle's center by the given offsets multiplied by width and height
-    new_rect.center.x += x_offset * rect.width;
-    new_rect.center.y += y_offset * rect.height;
+    new_rect.center.x += x_offset * rect.get_u_extent_size();
+    new_rect.center.y += y_offset * rect.get_v_extent_size();
 
     return new_rect;
 }
@@ -631,10 +648,10 @@ Rectangle get_bounding_rectangle(const std::vector<Rectangle> &rectangles) {
     float max_y = std::numeric_limits<float>::lowest();
 
     for (const auto &rect : rectangles) {
-        float left = rect.center.x - rect.width / 2;
-        float right = rect.center.x + rect.width / 2;
-        float bottom = rect.center.y - rect.height / 2;
-        float top = rect.center.y + rect.height / 2;
+        float left = rect.center.x - rect.get_u_extent_size() / 2;
+        float right = rect.center.x + rect.get_u_extent_size() / 2;
+        float bottom = rect.center.y - rect.get_v_extent_size() / 2;
+        float top = rect.center.y + rect.get_v_extent_size() / 2;
 
         if (left < min_x)
             min_x = left;
@@ -682,29 +699,30 @@ std::vector<Rectangle> weighted_subdivision(const Rectangle &rect, const std::ve
 
     // initialize start position for either the x or y component, for horizontal cuts we start at the top of the
     // rect, for vertical cuts we start at the left side
-    float start_position = (horizontal) ? rect.center.y + rect.height / 2 : rect.center.x - rect.width / 2;
+    float start_position =
+        (horizontal) ? rect.center.y + rect.get_v_extent_size() / 2 : rect.center.x - rect.get_u_extent_size() / 2;
     float current_position = start_position;
 
     // generate subrectangles by starting from the start position and doing sequential cuts
     for (size_t i = 0; i < weights.size(); ++i) {
-        float subdivision_size =
-            (static_cast<float>(weights[i]) / total_weight) * (not vertical ? rect.height : rect.width);
+        float subdivision_size = (static_cast<float>(weights[i]) / total_weight) *
+                                 (not vertical ? rect.get_v_extent_size() : rect.get_u_extent_size());
 
         Rectangle subrect;
         if (horizontal) {
             // Create subrectangle vertically from top to bottom
             subrect.center = rect.center;
             subrect.center.y = current_position - subdivision_size / 2;
-            subrect.width = rect.width;
-            subrect.height = subdivision_size;
+            subrect.set_u_extent(rect.get_u_extent_size());
+            subrect.set_v_extent(subdivision_size);
             // Update the current position for the next subdivision (move downwards)
             current_position -= subdivision_size;
         } else {
             // Create subrectangle horizontally from left to right
             subrect.center = rect.center;
             subrect.center.x = current_position + subdivision_size / 2;
-            subrect.width = subdivision_size;
-            subrect.height = rect.height;
+            subrect.set_u_extent(subdivision_size);
+            subrect.set_v_extent(rect.get_v_extent_size());
             // Update the current position for the next subdivision (move rightwards)
             current_position += subdivision_size;
         }
@@ -753,8 +771,8 @@ draw_info::IndexedVertexPositions generate_grid(const glm::vec3 &center_position
     std::vector<std::vector<unsigned int>> all_square_indices;
 
     for (const auto &rect : rectangles) {
-        std::vector<glm::vec3> rectangle_vertices =
-            generate_rectangle_vertices(rect.center.x, rect.center.y, rect.width, rect.height);
+        std::vector<glm::vec3> rectangle_vertices = generate_rectangle_vertices(
+            rect.center.x, rect.center.y, rect.get_u_extent_size(), rect.get_v_extent_size());
         vertices.insert(vertices.end(), rectangle_vertices.begin(), rectangle_vertices.end());
 
         std::vector<unsigned int> rectangle_indices = generate_rectangle_indices();
@@ -2371,7 +2389,7 @@ draw_info::IndexedVertexPositions generate_arrow_path(const std::vector<glm::vec
         const glm::vec3 dir = end - start;
 
         if (start == end) {
-            global_logger.info("found identical points");
+            global_logger->info("found identical points");
             num_consecutive_identical_points += 1;
 
             if (last_non_zero_dir) {
