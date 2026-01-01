@@ -338,7 +338,7 @@ Grid::Grid(int rows, int cols, const Rectangle &rect)
     : Grid(rows, cols, rect.get_u_extent_size(), rect.get_v_extent_size(), rect.center.x, rect.center.y,
            rect.center.z) {}
 
-// TODO: probably swap the order here?
+// col, row ordering because that matches the regular mathematical {x, y} pairs
 Rectangle Grid::get_at(int col, int row) const {
     if (row < 0 || row >= rows || col < 0 || col >= cols) {
         throw std::out_of_range("Index out of range");
@@ -380,7 +380,7 @@ std::vector<Rectangle> Grid::get_selection(float x0, float y0, float x1, float y
     return selected;
 }
 
-std::vector<Rectangle> Grid::get_rectangles_in_bounding_box(int row1, int col1, int row2, int col2) const {
+std::vector<Rectangle> Grid::get_rectangles_in_bounding_box(int col1, int row1, int col2, int row2) const {
     if (row1 < 0 || row1 >= rows || row2 < 0 || row2 >= rows || col1 < 0 || col1 >= cols || col2 < 0 || col2 >= cols) {
         throw std::out_of_range("Row or column indices are out of bounds");
     }
@@ -585,10 +585,18 @@ Rectangle expand_rectangle(const Rectangle &rect, float u_addition, float v_addi
 }
 
 Rectangle inset_rectangle(const Rectangle &rect, float x_inset, float y_inset) {
-    Rectangle inset_rect;
+    Rectangle inset_rect = rect;
     inset_rect.center = rect.center;
-    inset_rect.set_u_extent(std::max(0.0f, rect.get_u_extent_size() - 2.0f * x_inset));
-    inset_rect.set_v_extent(std::max(0.0f, rect.get_v_extent_size() - 2.0f * y_inset));
+
+    // if the rectangle is in full extent mode, adjust inset like in expand_rectangle
+    if (rect.extent_mode == ExtentMode::full) {
+        x_inset *= 2.0f;
+        y_inset *= 2.0f;
+    }
+
+    inset_rect.set_u_extent(std::max(0.0f, rect.get_u_extent_size() - x_inset));
+    inset_rect.set_v_extent(std::max(0.0f, rect.get_v_extent_size() - y_inset));
+
     return inset_rect;
 }
 

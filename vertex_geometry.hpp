@@ -443,12 +443,25 @@ class Grid {
     // this is like x, y
     Rectangle get_at(int col, int row) const;
     std::vector<Rectangle> get_selection(float x0, float y0, float x1, float y1) const;
-    std::vector<Rectangle> get_rectangles_in_bounding_box(int row1, int col1, int row2, int col2) const;
+    std::vector<Rectangle> get_rectangles_in_bounding_box(int col1, int row1, int col2, int row2) const;
     std::vector<Rectangle> get_row(int row) const;
     std::vector<Rectangle> get_column(int col) const;
 
     const int rows; // Number of rows in the grid
     const int cols; // Number of columns in the grid
+
+    std::vector<Rectangle> get_all_rectangles() const {
+        std::vector<Rectangle> all_rects;
+        all_rects.reserve(rows * cols); // avoid reallocations
+
+        for (int r = 0; r < rows; ++r) {
+            for (int c = 0; c < cols; ++c) {
+                all_rects.push_back(get_at(c, r));
+            }
+        }
+
+        return all_rects;
+    }
 
   private:
     float grid_width;  // Total width of the grid in NDC
