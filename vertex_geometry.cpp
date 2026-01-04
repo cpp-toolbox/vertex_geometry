@@ -328,6 +328,11 @@ glm::vec3 Rectangle::get_bottom_left() const { return center - u - v; }
 glm::vec3 Rectangle::get_bottom_center() const { return center - v; }
 glm::vec3 Rectangle::get_bottom_right() const { return center + u - v; }
 
+Rectangle aabb2d_to_rect(const AxisAlignedBoundingBox2D &aabb2d) {
+    return Rectangle{glm_utils::lift(aabb2d.get_center(), 0, glm_utils::Component::z), aabb2d.get_x_size(),
+                     aabb2d.get_y_size(), ExtentMode::full};
+}
+
 // Constructor with explicit dimensions and origin
 Grid::Grid(int rows, int cols, float width, float height, float origin_x, float origin_y, float origin_z)
     : rows(rows), cols(cols), grid_width(width), grid_height(height), origin_x(origin_x), origin_y(origin_y),
@@ -492,6 +497,117 @@ draw_info::IndexedVertexPositions AxisAlignedBoundingBox::get_ivp() const {
 
     // Connect ngons into a prism IVP
     return connect_ngons(bottom_ngon, top_ngon);
+}
+
+std::vector<AxisAlignedBoundingBox> subtract_aabb(const AxisAlignedBoundingBox &A, const AxisAlignedBoundingBox &B) {
+    std::vector<AxisAlignedBoundingBox> result;
+
+    // intersection
+    glm::vec3 inter_min = glm::max(A.min, B.min);
+    glm::vec3 inter_max = glm::min(A.max, B.max);
+
+    // no overlap, nothing to do
+    if (inter_min.x >= inter_max.x || inter_min.y >= inter_max.y || inter_min.z >= inter_max.z) {
+        result.push_back(A);
+        return result;
+    }
+
+    // left (x-axis)
+    if (B.min.x > A.min.x) {
+        result.emplace_back(AxisAlignedBoundingBox(A.min, glm::vec3(B.min.x, A.max.y, A.max.z)));
+    }
+
+    // right (x-axis)
+    if (B.max.x < A.max.x) {
+        result.emplace_back(AxisAlignedBoundingBox(glm::vec3(B.max.x, A.min.y, A.min.z), A.max));
+    }
+
+    // front (y-axis)
+    if (B.min.y > A.min.y) {
+        result.emplace_back(
+            AxisAlignedBoundingBox(glm::vec3(inter_min.x, A.min.y, A.min.z), glm::vec3(inter_max.x, B.min.y, A.max.z)));
+    }
+
+    // back (y-axis)
+    if (B.max.y < A.max.y) {
+        result.emplace_back(
+            AxisAlignedBoundingBox(glm::vec3(inter_min.x, B.max.y, A.min.z), glm::vec3(inter_max.x, A.max.y, A.max.z)));
+    }
+
+    // bottom (z-axis)
+    if (B.min.z > A.min.z) {
+        result.emplace_back(AxisAlignedBoundingBox(glm::vec3(inter_min.x, inter_min.y, A.min.z),
+                                                   glm::vec3(inter_max.x, inter_max.y, B.min.z)));
+    }
+
+    // top (z-axis)
+    if (B.max.z < A.max.z) {
+        result.emplace_back(AxisAlignedBoundingBox(glm::vec3(inter_min.x, inter_min.y, B.max.z),
+                                                   glm::vec3(inter_max.x, inter_max.y, A.max.z)));
+    }
+
+    return result;
+}
+
+std::vector<AxisAlignedBoundingBox> subtract_aabbs(const AxisAlignedBoundingBox &A,
+                                                   const std::vector<AxisAlignedBoundingBox> &Bs) {
+    std::vector<AxisAlignedBoundingBox> current;
+    current.push_back(A);
+
+    for (const AxisAlignedBoundingBox &B : Bs) {
+        std::vector<AxisAlignedBoundingBox> next;
+
+        for (const AxisAlignedBoundingBox &box : current) {
+            std::vector<AxisAlignedBoundingBox> pieces = subtract_aabb(box, B);
+            next.insert(next.end(), pieces.begin(), pieces.end());
+        }
+
+        current = std::move(next);
+
+        // Early out: nothing left
+        if (current.empty()) {
+            break;
+        }
+    }
+
+    return current;
+}
+
+std::vector<AxisAlignedBoundingBox2D> subtract_aabb(const AxisAlignedBoundingBox2D &A,
+                                                    const AxisAlignedBoundingBox2D &B) {
+    std::vector<AxisAlignedBoundingBox2D> result;
+
+    // intersection
+    glm::vec2 inter_min = glm::max(A.min, B.min);
+    glm::vec2 inter_max = glm::min(A.max, B.max);
+
+    // no overlap
+    if (inter_min.x >= inter_max.x || inter_min.y >= inter_max.y) {
+        result.push_back(A);
+        return result;
+    }
+
+    // left strip
+    if (B.min.x > A.min.x) {
+        result.emplace_back(AxisAlignedBoundingBox2D(A.min, glm::vec2(B.min.x, A.max.y)));
+    }
+
+    // right strip
+    if (B.max.x < A.max.x) {
+        result.emplace_back(AxisAlignedBoundingBox2D(glm::vec2(B.max.x, A.min.y), A.max));
+    }
+
+    // bottom strip
+    if (B.min.y > A.min.y) {
+        result.emplace_back(AxisAlignedBoundingBox2D(glm::vec2(inter_min.x, A.min.y), glm::vec2(inter_max.x, B.min.y)));
+    }
+
+    // top strip
+    if (B.max.y < A.max.y) {
+        result.emplace_back(AxisAlignedBoundingBox2D(glm::vec2(inter_min.x, B.max.y), glm::vec2(inter_max.x, A.max.y)));
+    }
+
+    return result;
 }
 
 draw_info::IndexedVertexPositions triangulate(const std::vector<glm::vec3> &pts, TriangulationMode triangulation_mode) {

@@ -182,6 +182,8 @@ class AxisAlignedBoundingBox {
     draw_info::IndexedVertexPositions get_ivp() const;
 };
 
+enum class ExtentMode { half, full };
+
 class AxisAlignedBoundingBox2D {
   public:
     AxisAlignedBoundingBox2D(const std::vector<glm::vec2> &xy_positions) {
@@ -194,8 +196,48 @@ class AxisAlignedBoundingBox2D {
         }
     }
 
+    AxisAlignedBoundingBox2D() {
+        min = glm::vec2(std::numeric_limits<float>::max());
+        max = glm::vec2(std::numeric_limits<float>::lowest());
+    }
+
+    AxisAlignedBoundingBox2D(const glm::vec2 &min, const glm::vec2 &max)
+        : vertex_geometry::AxisAlignedBoundingBox2D(std::vector{min, max}) {}
+
+    // constructs aabb from extent, centered at origin
+    AxisAlignedBoundingBox2D(const glm::vec2 &extent, ExtentMode extent_mode = ExtentMode::full)
+        : vertex_geometry::AxisAlignedBoundingBox2D(-extent * ((extent_mode == ExtentMode::full) ? 0.5f : 1.0f),
+                                                    extent * ((extent_mode == ExtentMode::full) ? 0.5f : 1.0f)) {}
+
+    // constructs aabb from extents, centered anywhere
+    AxisAlignedBoundingBox2D(const glm::vec2 &center, float x_extent, float y_extent,
+                             ExtentMode extent_mode = ExtentMode::full)
+        : vertex_geometry::AxisAlignedBoundingBox2D(
+              center + glm_utils::x_R2 * ((extent_mode == ExtentMode::full) ? 0.5f : 1.0f) * x_extent,
+              center + glm_utils::y_R2 * ((extent_mode == ExtentMode::full) ? 0.5f : 1.0f) * y_extent) {}
+
+    // pushing directionally out.
+    AxisAlignedBoundingBox2D(const glm::vec2 &center, float x_extent_pos, float x_extent_neg, float y_extent_pos,
+                             float y_extent_neg)
+        : vertex_geometry::AxisAlignedBoundingBox2D(center + glm::vec2(-x_extent_neg, -y_extent_neg),
+                                                    center + glm::vec2(x_extent_pos, y_extent_pos)) {}
+
     glm::vec2 min;
     glm::vec2 max;
+
+    AxisAlignedBoundingBox2D centered_at_origin() const {
+        const glm::vec2 half_extents = (max - min) * 0.5f;
+        return AxisAlignedBoundingBox2D{-half_extents, half_extents};
+    }
+
+    glm::vec2 get_center() const { return (min + max) * 0.5f; }
+    float get_x_size() const { return (max.x - min.x); }
+    float get_y_size() const { return (max.y - min.y); }
+
+    // returns true if this aabb contains the other one
+    bool contains(const vertex_geometry::AxisAlignedBoundingBox2D &other) const {
+        return other.min.x >= min.x && other.min.y >= min.y && other.max.x <= max.x && other.max.y <= max.y;
+    }
 
     // Returns the 4 corners of the 2D bounding box
     std::array<glm::vec2, 4> get_corners() const {
@@ -205,6 +247,35 @@ class AxisAlignedBoundingBox2D {
     // LATER
     // draw_info::IndexedVertexPositions get_ivp();
 };
+
+std::vector<AxisAlignedBoundingBox> subtract_aabb(const AxisAlignedBoundingBox &A, const AxisAlignedBoundingBox &B);
+
+// warning, can be exponentialy in the size of B
+std::vector<AxisAlignedBoundingBox> subtract_aabbs(const AxisAlignedBoundingBox &A,
+                                                   const std::vector<AxisAlignedBoundingBox> &Bs);
+
+/**
+ * @brief Subtracts one axis-aligned bounding box (AABB) from another.
+ *
+ * Given a base AABB `A` and an overlapping AABB `B`, this function computes
+ * the remaining regions of `A` after "cutting out" `B`. The result is a
+ * collection of 0 to 4 disjoint AABBs representing the leftover space.
+ *
+ * The possible resulting regions are:
+ * - Left strip of A left of B
+ * - Right strip of A right of B
+ * - Bottom strip of A below B
+ * - Top strip of A above B
+ *
+ * If `B` does not overlap `A`, the result contains only `A`.
+ * If `B` completely covers `A`, the result is empty.
+ *
+ * @param A The base AABB to subtract from.
+ * @param B The AABB to subtract.
+ * @return std::vector<AxisAlignedBoundingBox2D> A vector of remaining AABBs.
+ */
+std::vector<AxisAlignedBoundingBox2D> subtract_aabb(const AxisAlignedBoundingBox2D &A,
+                                                    const AxisAlignedBoundingBox2D &B);
 
 draw_info::IndexedVertexPositions triangulate(const std::vector<glm::vec3> &pts,
                                               TriangulationMode triangulation_mode = TriangulationMode::CentralFan);
@@ -242,10 +313,9 @@ draw_info::IndexedVertexPositions connect_ngons(const NGon &a, const NGon &b);
  * @note Using this enum makes constructor intent explicit and prevents accidental
  * misuse of size parameters.
  *
- * @note The biggest thing to realize is that for some constant c, a geometric object with half-extent equal to c, will
- * be twice as large as the one with the full extent equal to c
+ * @note The biggest thing to realize is that for some constant c, a geometric object with half-extent equal to c,
+ * will be twice as large as the one with the full extent equal to c
  */
-enum class ExtentMode { half, full };
 
 enum class Plane {
     XY,
@@ -270,8 +340,8 @@ class Rectangle {
 
   public:
     /**
-     * @brief Constructs a Rectangle given a center and two edge vectors. A rectangle has corners with angles all equal
-     * to 90 degrees, and thus is a subset of all possible quads.
+     * @brief Constructs a Rectangle given a center and two edge vectors. A rectangle has corners with angles all
+     * equal to 90 degrees, and thus is a subset of all possible quads.
      *
      * @note If the input `v` is not perpendicular to `u`, it will be automatically
      *       orthogonalized. This ensures that the resulting rectangle is a true rectangle
@@ -297,10 +367,11 @@ class Rectangle {
     }
 
     // by default we use width height 2 to take up the full [-1, 1] x [-1, 1] ndc space
-    // NOTE: by default the rectangle will be aligned with the XY plane
+    // NOTE: by default the rectangle will be planar with the XY plane
+    // TODO: make it take in a plane to go along ?
     // NOTE: full extents were chosen here because of the fact that many other things rely on this being in full
-    // extents, sometime in the future it would be better for that other code, to rely on an an AABB(2D) and go back to
-    // talking about width and height rather than using generic retangles.
+    // extents, sometime in the future it would be better for that other code, to rely on an an AABB(2D) and go back
+    // to talking about width and height rather than using generic retangles.
     Rectangle(glm::vec3 center = glm::vec3(0), float u_size = 2, float v_size = 2,
               ExtentMode extent_mode = ExtentMode::full)
         : Rectangle(center, (extent_mode == ExtentMode::half ? u_size : u_size * 0.5f) * glm_utils::x,
@@ -359,8 +430,11 @@ class Rectangle {
     glm::vec3 get_bottom_right() const;
 };
 
-// TODO: I'm pretty sure all the below logic is for Rectangle2D's, but it works with the current rectangle so leaving
-// it.
+// TODO: in the future when required we can add the option to pass a plane to be planar to or something like that.
+Rectangle aabb2d_to_rect(const AxisAlignedBoundingBox2D &aabb2d);
+
+// TODO: I'm pretty sure all the below logic is for Rectangle2D's, but it works with the current rectangle so
+// leaving it.
 
 /**
  * @brief Returns a new rectangle with expanded edge-to-edge size along its local axes.
@@ -498,8 +572,8 @@ std::vector<Rectangle> get_rects_intersecting_circle(const Grid &grid, float cx,
  * Is string with newlines where each line has the exact same length forming a sort of 2d grid. The
  * elements in the grid are binary, an asterisk indicates that pixel is "on", and a space indicates that it is off.
  *
- * This function takes in a binary text grid, and then constructs an equivalent grid of squares wherever the binary text
- * grid is on
+ * This function takes in a binary text grid, and then constructs an equivalent grid of squares wherever the binary
+ * text grid is on
  *
  * The purpose of this function is to allow you to make simple pixel art or fonts without having to use images
  *
@@ -821,8 +895,8 @@ draw_info::IndexedVertexPositions generate_function_visualization(std::function<
  * @param radius The radius of the cylinder.
  * @param segments The number of vertices per circular cross-section (higher values produce smoother cylinders).
  *
- * @note The function uses the Gram-Schmidt process to compute an arbitrary perpendicular frame (normal and binormal)
- *       for each segment to construct the circular cross-sections. At least two points in `path` are required;
+ * @note The function uses the Gram-Schmidt process to compute an arbitrary perpendicular frame (normal and
+ * binormal) for each segment to construct the circular cross-sections. At least two points in `path` are required;
  *       otherwise, an empty mesh is returned.
  */
 draw_info::IndexedVertexPositions generate_segmented_cylinder(const std::vector<std::pair<glm::vec3, glm::vec3>> &path,
