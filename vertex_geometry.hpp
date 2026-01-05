@@ -509,6 +509,7 @@ struct Grid {
     Grid(int rows, int cols, float width = 2.0f, float height = 2.0f, float origin_x = 0.0f, float origin_y = 0.0f,
          float origin_z = 0.0f);
     Grid(int rows, int cols, const Rectangle &rect);
+    Grid() {};
 
     // this is like x, y
     Rectangle get_at(int col, int row) const;
@@ -517,8 +518,8 @@ struct Grid {
     std::vector<Rectangle> get_row(int row) const;
     std::vector<Rectangle> get_column(int col) const;
 
-    const int rows; // Number of rows in the grid
-    const int cols; // Number of columns in the grid
+    int rows; // Number of rows in the grid
+    int cols; // Number of columns in the grid
 
     std::vector<Rectangle> get_all_rectangles() const {
         std::vector<Rectangle> all_rects;
