@@ -184,8 +184,7 @@ class AxisAlignedBoundingBox {
 
 enum class ExtentMode { half, full };
 
-class AxisAlignedBoundingBox2D {
-  public:
+struct AxisAlignedBoundingBox2D {
     AxisAlignedBoundingBox2D(const std::vector<glm::vec2> &xy_positions) {
         min = glm::vec2(std::numeric_limits<float>::max());
         max = glm::vec2(std::numeric_limits<float>::lowest());
@@ -243,9 +242,6 @@ class AxisAlignedBoundingBox2D {
     std::array<glm::vec2, 4> get_corners() const {
         return {glm::vec2(min.x, min.y), glm::vec2(max.x, min.y), glm::vec2(min.x, max.y), glm::vec2(max.x, max.y)};
     }
-
-    // LATER
-    // draw_info::IndexedVertexPositions get_ivp();
 };
 
 std::vector<AxisAlignedBoundingBox> subtract_aabb(const AxisAlignedBoundingBox &A, const AxisAlignedBoundingBox &B);
@@ -327,16 +323,18 @@ enum class Plane {
 };
 
 // TODO: would it be beneficial to have a Rectangle2D class as well?
-class Rectangle {
+struct Rectangle {
 
   public:
     ExtentMode extent_mode = ExtentMode::half;
 
-  private:
     // u and v are vectors that go from the center to the edge of the rectangle, and are definitionally half-extents
     // TODO: these probably don't have to be private anymore, but we need setters for them.
     glm::vec3 u;
     glm::vec3 v;
+
+    // TODO: make private and use setters
+    glm::vec3 center; // Center position
 
   public:
     /**
@@ -377,9 +375,6 @@ class Rectangle {
         : Rectangle(center, (extent_mode == ExtentMode::half ? u_size : u_size * 0.5f) * glm_utils::x,
                     (extent_mode == ExtentMode::half ? v_size : v_size * 0.5f) * glm_utils::y, extent_mode) {}
 
-    // TODO: make private and use setters
-    glm::vec3 center; // Center position
-
     // TODO: in the future we can use lazily computed values using Mutable access notification for all dependencies.
 
     float get_u_extent_size() const {
@@ -417,6 +412,7 @@ class Rectangle {
     }
 
     // TODO: should I extract this out so this class has nothing to do with draw info?
+    // yes!
     draw_info::IndexedVertexPositions get_ivp() const;
     friend std::ostream &operator<<(std::ostream &os, const Rectangle &rect);
 
@@ -429,6 +425,8 @@ class Rectangle {
     glm::vec3 get_bottom_center() const;
     glm::vec3 get_bottom_right() const;
 };
+
+draw_info::IndexedVertexPositions get_ivp(Rectangle *rectangle);
 
 // TODO: in the future when required we can add the option to pass a plane to be planar to or something like that.
 Rectangle aabb2d_to_rect(const AxisAlignedBoundingBox2D &aabb2d);
@@ -504,12 +502,10 @@ Rectangle slide_rectangle(const Rectangle &rect, int x_offset, int y_offset);
 Rectangle get_bounding_rectangle(const std::vector<Rectangle> &rectangles);
 
 /**
- * @brief a rectangular grid which allows you to get the rectangles out of it
- *
+ * @brief a rectangular planar grid which allows you to get the rectangles out of it
  *
  */
-class Grid {
-  public:
+struct Grid {
     Grid(int rows, int cols, float width = 2.0f, float height = 2.0f, float origin_x = 0.0f, float origin_y = 0.0f,
          float origin_z = 0.0f);
     Grid(int rows, int cols, const Rectangle &rect);
@@ -537,7 +533,6 @@ class Grid {
         return all_rects;
     }
 
-  private:
     float grid_width;  // Total width of the grid in NDC
     float grid_height; // Total height of the grid in NDC
     float origin_x;    // X-coordinate of the grid's origin
@@ -546,6 +541,38 @@ class Grid {
     float rect_width;  // Width of each rectangle
     float rect_height; // Height of each rectangle
 };
+
+std::vector<glm::ivec2> get_indices_at_position(Grid grid, glm::vec2 pt);
+std::vector<Rectangle> get_rectangles_at_position(Grid grid, glm::vec2 pt);
+std::vector<Rectangle> get_all_rectangles(Grid grid);
+
+// NOTE: this doesn't account for a add number sized grid where the origin is not part of the grid, but I don't care for
+// now until that's a real problem, just keep it in mind
+inline float snap_to_grid(float value, float cell_size, float origin = 0.0f) {
+    const float t = (value - origin) / cell_size;
+    return origin + std::round(t) * cell_size;
+}
+
+inline glm::vec2 snap_vec2_to_grid(const glm::vec2 &v, float grid_size_x, float grid_size_y,
+                                   const glm::vec2 &origin = glm::vec2(0.0f)) {
+    return glm::vec2(snap_to_grid(v.x, grid_size_x, origin.x), snap_to_grid(v.y, grid_size_y, origin.y));
+}
+
+inline void snap_vec2_to_grid_inplace(glm::vec2 &v, float grid_size_x, float grid_size_y,
+                                      const glm::vec2 &origin = glm::vec2(0.0f)) {
+    v.x = snap_to_grid(v.x, grid_size_x, origin.x);
+    v.y = snap_to_grid(v.y, grid_size_y, origin.y);
+}
+
+inline void snap_aabb_to_grid_inplace(AxisAlignedBoundingBox2D *aabb2d, float grid_size_x, float grid_size_y,
+                                      const glm::vec2 &origin = glm::vec2(0.0f)) {
+    snap_vec2_to_grid_inplace(aabb2d->min, grid_size_x, grid_size_y, origin);
+    snap_vec2_to_grid_inplace(aabb2d->max, grid_size_x, grid_size_y, origin);
+
+    // safety in case snapping crossed over
+    aabb2d->min = glm::min(aabb2d->min, aabb2d->max);
+    aabb2d->max = glm::max(aabb2d->min, aabb2d->max);
+}
 
 bool circle_intersects_rect(float cx, float cy, float radius, const Rectangle &rect);
 std::vector<Rectangle> get_rects_intersecting_circle(const Grid &grid, float cx, float cy, float radius);

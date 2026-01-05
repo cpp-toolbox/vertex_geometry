@@ -42,6 +42,66 @@ std::string strip_leading_newlines(const std::string &text) {
     return text.substr(start);
 }
 
+// bad function becuase it just flattens the rect into 2d assuming it only had some z offset, ok to use when you know
+// that's true
+bool contains_point(Rectangle rect, const glm::vec2 &p) {
+    // convert 3d to 2d
+    glm::vec2 c(rect.center.x, rect.center.y);
+    glm::vec2 u(rect.u.x, rect.u.y);
+    glm::vec2 v(rect.v.x, rect.v.y);
+
+    glm::vec2 d = p - c; // vector from center to point
+
+    // Project point onto u and v axes
+    float du = glm::dot(d, glm::normalize(u));
+    float dv = glm::dot(d, glm::normalize(v));
+
+    float u_len = glm::length(u);
+    float v_len = glm::length(v);
+
+    // Check if inside rectangle along both axes
+    return (std::abs(du) <= u_len) && (std::abs(dv) <= v_len);
+}
+
+std::vector<glm::ivec2> get_indices_at_position(Grid grid, glm::vec2 pt) {
+    std::vector<glm::ivec2> indices;
+    for (int r = 0; r < grid.rows; ++r) {
+        for (int c = 0; c < grid.cols; ++c) {
+            Rectangle rect = grid.get_at(c, r);
+            if (contains_point(rect, pt)) {
+                indices.push_back(glm::ivec2{c, r});
+            }
+        }
+    }
+    return indices; // can be empty if no rectangle contains the point
+}
+
+std::vector<Rectangle> get_rectangles_at_position(Grid grid, glm::vec2 pt) {
+    std::vector<Rectangle> result;
+
+    auto indices = get_indices_at_position(grid, pt);
+
+    for (const auto &idx : indices) {
+        Rectangle rect = grid.get_at(idx.x, idx.y);
+        result.push_back(rect);
+    }
+
+    return result;
+}
+
+std::vector<Rectangle> get_all_rectangles(Grid grid) {
+    std::vector<Rectangle> all_rects;
+    all_rects.reserve(grid.rows * grid.cols); // avoid reallocations
+
+    for (int r = 0; r < grid.rows; ++r) {
+        for (int c = 0; c < grid.cols; ++c) {
+            all_rects.push_back(grid.get_at(c, r));
+        }
+    }
+
+    return all_rects;
+}
+
 bool circle_intersects_rect(float cx, float cy, float radius, const Rectangle &rect) {
     // Clamp circle center to rectangle bounds to find the closest point on the rect
     float closest_x = std::max(rect.center.x, std::min(cx, rect.center.x + rect.get_u_extent_size()));
@@ -327,6 +387,10 @@ glm::vec3 Rectangle::get_right_center() const { return center + u; }
 glm::vec3 Rectangle::get_bottom_left() const { return center - u - v; }
 glm::vec3 Rectangle::get_bottom_center() const { return center - v; }
 glm::vec3 Rectangle::get_bottom_right() const { return center + u - v; }
+
+draw_info::IndexedVertexPositions get_ivp(Rectangle *rectangle) {
+    return generate_rectangle(rectangle->center, rectangle->u, rectangle->v);
+}
 
 Rectangle aabb2d_to_rect(const AxisAlignedBoundingBox2D &aabb2d) {
     return Rectangle{glm_utils::lift(aabb2d.get_center(), 0, glm_utils::Component::z), aabb2d.get_x_size(),
