@@ -563,6 +563,41 @@ draw_info::IndexedVertexPositions AxisAlignedBoundingBox::get_ivp() const {
     return connect_ngons(bottom_ngon, top_ngon);
 }
 
+std::optional<float> intersect_ray(const Ray &ray, const AxisAlignedBoundingBox &aabb) {
+    float t_min = 0.0f;
+    float t_max = std::numeric_limits<float>::max();
+
+    for (int axis = 0; axis < 3; ++axis) {
+        float origin = ray.origin[axis];
+        float dir = ray.direction[axis];
+        float min_b = aabb.min[axis];
+        float max_b = aabb.max[axis];
+
+        if (std::abs(dir) < 1e-8f) {
+            if (origin < min_b || origin > max_b) {
+                return std::nullopt;
+            }
+        } else {
+            float inv_d = 1.0f / dir;
+            float t1 = (min_b - origin) * inv_d;
+            float t2 = (max_b - origin) * inv_d;
+
+            if (t1 > t2) {
+                std::swap(t1, t2);
+            }
+
+            t_min = std::max(t_min, t1);
+            t_max = std::min(t_max, t2);
+
+            if (t_min > t_max) {
+                return std::nullopt;
+            }
+        }
+    }
+
+    return t_min; // entry distance
+}
+
 std::vector<AxisAlignedBoundingBox> subtract_aabb(const AxisAlignedBoundingBox &A, const AxisAlignedBoundingBox &B) {
     std::vector<AxisAlignedBoundingBox> result;
 

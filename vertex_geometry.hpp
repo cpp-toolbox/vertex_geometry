@@ -182,6 +182,15 @@ class AxisAlignedBoundingBox {
     draw_info::IndexedVertexPositions get_ivp() const;
 };
 
+struct Ray {
+    glm::vec3 origin;
+    // doesn't have to be normalized
+    glm::vec3 direction;
+};
+
+// returns t value [0, 1] along the ray that a hit occurred or not if there wasn't a hit.
+std::optional<float> intersect_ray(const Ray &ray, const AxisAlignedBoundingBox &aabb);
+
 enum class ExtentMode { half, full };
 
 struct AxisAlignedBoundingBox2D {
